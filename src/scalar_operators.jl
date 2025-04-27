@@ -1,10 +1,10 @@
 import Base:^
 ^(x::GraphNode, n::GraphNode) = ScalarOperator(^, x, n)
 forward(::ScalarOperator{typeof(^)}, x, n) = x^n
-backward(::ScalarOperator{typeof(^)}, x, n, g) = 
+backward(::ScalarOperator{typeof(^)}, x, n, ∇) = 
     let
-        g * n * x^(n-1),
-        g * log(abs(x)) * x^n
+        ∇ * n * x^(n-1),
+        ∇ * log(abs(x)) * x^n
     end
 
 
@@ -12,4 +12,4 @@ backward(::ScalarOperator{typeof(^)}, x, n, g) =
 import Base: sin
 sin(x::GraphNode) = ScalarOperator(sin, x)
 forward(::ScalarOperator{typeof(sin)}, x) = sin(x)
-backward(::ScalarOperator{typeof(sin)}, x, g) = tuple(g * cos(x))
+backward(::ScalarOperator{typeof(sin)}, x, ∇) = tuple(∇ * cos(x))

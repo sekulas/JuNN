@@ -1,6 +1,6 @@
 reset!(node::Constant) = nothing
-reset!(node::Variable) = node.gradient = nothing
-reset!(node::Operator) = node.gradient = nothing
+reset!(node::Variable) = node.∇ = nothing
+reset!(node::Operator) = node.∇ = nothing
 
 compute!(node::Constant) = nothing
 compute!(node::Variable) = nothing

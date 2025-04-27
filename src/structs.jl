@@ -7,16 +7,16 @@ end
 
 mutable struct Variable <: GraphNode
     output :: Any
-    gradient :: Any
+    ∇ :: Any
     name :: String
-    Variable(output, gradient, name) = new(output, gradient, name)
+    Variable(output, ∇, name) = new(output, ∇, name)
 end
 Variable(output; name="?") = Variable(output, nothing, name)
 
 mutable struct ScalarOperator{F} <: Operator
     inputs :: Any
     output :: Any
-    gradient :: Any
+    ∇ :: Any
     name :: String
     ScalarOperator(fun, inputs...; name="?") = new{typeof(fun)}(inputs, nothing, nothing, name)
 end
@@ -24,7 +24,7 @@ end
 mutable struct BroadcastedOperator{F} <: Operator
     inputs :: Any
     output :: Any
-    gradient :: Any
+    ∇ :: Any
     name :: String
     BroadcastedOperator(fun, inputs...; name="?") = new{typeof(fun)}(inputs, nothing, nothing, name)
 end

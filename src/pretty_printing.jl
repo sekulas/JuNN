@@ -6,5 +6,5 @@ show(io::IO, x::Constant) = print(io, "const ", x.output)
 show(io::IO, x::Variable) = begin
     print(io, "var ", x.name);
     print(io, "\n ┣━ ^ "); summary(io, x.output)
-    print(io, "\n ┗━ ∇ ");  summary(io, x.gradient)
+    print(io, "\n ┗━ ∇ ");  summary(io, x.∇)
 end
