@@ -25,9 +25,6 @@ function DataLoader(data; batchsize=1, shuffle=false, rng=GLOBAL_RNG)
     num_batches = ceil(Int, num_obs / batchsize)
     
     indicies_obs = collect(1:num_obs)
-    if shuffle
-        shuffle!(rng, indicies_obs)
-    end
     
     DataLoader(data, num_obs, indicies_obs, batchsize, num_batches, shuffle, rng)
 end
@@ -35,6 +32,9 @@ end
 # returns data in d.indices[i+1:i+batchsize]
 @propagate_inbounds function Base.iterate(dl::DataLoader, i=0)     
     i >= dl.num_batches && return nothing
+    if dl.shuffle && i == 0
+        shuffle!(dl.rng, dl.indices)
+    end
 
     next_idx = min(i + dl.batchsize, dl.num_obs)
     ids = dl.indicies_obs[i+1:next_idx]
