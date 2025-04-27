@@ -43,7 +43,6 @@ end
 end
 
 Base.length(dl::DataLoader) = dl.num_batches
-Base.eltype(::DataLoader{D}) where D = D
 
 _get_num_obs(data::AbstractArray) = size(data)[end]
 function _get_num_obs(data::Union{Tuple, NamedTuple})
