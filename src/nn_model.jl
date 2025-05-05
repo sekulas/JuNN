@@ -1,3 +1,5 @@
+using Random: GLOBAL_RNG, AbstractRNG
+include("structs.jl")
 
 struct Network{T<:Tuple}
     layers::T
@@ -29,24 +31,39 @@ end
 
 # https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/layers/basic.jl#L179
 # TODO: TYPED MATRIXES INSTEAD OF VARIABLES??
-struct Dense{M<:Matrix{Float32}, B<:Matrix{Float32}, F}
-    weights::M
-    biases::B
+mutable struct Dense{F}
+    weights::Variable
+    bias::Union{Nothing, Variable}
     activation::F
 
-    function Dense(weights::M, bias = true, activation::F = identity) where {M<:Matrix{Float32}, F}
-        b = create_bias(weights, bias, size(W,1))
-        new{M, typeof(b), F}(W, b, activation)
+    function Dense(weights::Variable, bias::Bool = false, 
+        activation::F = identity) where {F}
+        
+        b = create_bias(weights.output, bias, size(weights.output,1))
+        new{F}(weights, b, activation)
     end
 end
 
 function create_bias(weights::AbstractArray, bias::Bool, dims::Integer...)
-    bias ? fill!(similar(weights, dims...), 0) : false
+    bias ? Variable(fill!(similar(weights, dims...), 0)) : nothing
 end
 
-function Dense((in, out)::Pair{<:Integer, <:Integer}, σ = identity;
-    init = glorot_uniform, bias = true)
-    Dense(init(out, in), bias, σ)
+function Dense((in, out)::Pair{<:Integer, <:Integer}, activation::F=identity;
+               init = glorot_uniform, 
+               bias::Bool = false, 
+               name="dense_$in=>$out") where {F}
+    Dense(Variable(init(out, in), name=name), bias, activation)
+end
+
+function (l::Dense)(x::GraphNode)
+    #TODO: Size checking    
+    z = l.weights * x
+    
+    if !isnothing(l.bias)
+        z = z .+ l.bias
+    end
+    
+    return l.activation(z)
 end
 
 #nfan() = 1, 1 # fan_in, fan_out
@@ -54,7 +71,7 @@ end
 nfan(n_out, n_in) = n_in, n_out # In case of Dense kernels: arranged as matrices
 
 glorot_uniform(rng::AbstractRNG, dims...) = (rand(rng, Float32, dims...) .- 0.5f0) .* sqrt(24.0f0 / sum(nfan(dims...)))
-glorot_uniform(dims...) = glorot_uniform(Random.GLOBAL_RNG, dims...)
+glorot_uniform(dims...) = glorot_uniform(GLOBAL_RNG, dims...)
 
 
 # init funcs https://fluxml.ai/Flux.jl/previews/PR1612/utilities/
@@ -66,3 +83,8 @@ accuracy(m, x, y) = mean((m(x) .> 0.5) .== (y .> 0.5))
 
 # https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/gradient.jl#L3
 # https://github.com/FluxML/Zygote.jl/blob/1b914d994aea236bcb6d3d0cd6c099d86cede101/src/compiler/interface.jl#L152
+
+
+# Optimisers
+# https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/layers/basic.jl#L85
+# update! https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/optimise/train.jl
