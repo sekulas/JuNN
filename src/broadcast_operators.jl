@@ -6,7 +6,7 @@ forward(::BroadcastedOperator{typeof(mul!)}, A, x) = A * x
 backward(::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = tuple(∇ * x', A' * ∇)
 
 
-
+import LinearAlgebra: diagm
 # x .* y (element-wise multiplication)
 Base.Broadcast.broadcasted(*, x::GraphNode, y::GraphNode) = BroadcastedOperator(*, x, y)
 forward(::BroadcastedOperator{typeof(*)}, x, y) = x .* y
@@ -121,3 +121,8 @@ backward(node::BroadcastedOperator{typeof(softmax)}, x, ∇) =
         J = diagm(y) .- y * y'
         tuple(J' * ∇)
     end
+
+Base.Broadcast.broadcasted(identity, x::GraphNode) = BroadcastedOperator(identity, x)
+forward(::BroadcastedOperator{typeof(identity)}, x) = x
+backward(::BroadcastedOperator{typeof(identity)}, x, ∇) = 
+    tuple(∇)
