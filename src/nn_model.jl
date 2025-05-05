@@ -88,3 +88,21 @@ accuracy(m, x, y) = mean((m(x) .> 0.5) .== (y .> 0.5))
 # Optimisers
 # https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/layers/basic.jl#L85
 # update! https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/optimise/train.jl
+
+
+function mse_loss(y_pred::GraphNode, y_true::GraphNode)
+    diff = y_pred .- y_true
+    squared = diff .^ Constant(2)
+    return Constant(0.5) .* squared
+end
+
+function update_params!(model::Network, lr::Float32)
+    for layer in model.layers
+        if isa(layer, Dense)
+            layer.weights.output .-= lr .* layer.weights.∇
+            #if !isnothing(layer.bias)
+            #    layer.bias.output .-= lr .* layer.bias.∇
+            #end
+        end
+    end
+end
