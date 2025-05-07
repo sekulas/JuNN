@@ -1,5 +1,6 @@
 using Random: GLOBAL_RNG, AbstractRNG
 include("structs.jl")
+include("broadcast_operators.jl")
 
 struct Network{T<:Tuple}
     layers::T
@@ -78,7 +79,6 @@ glorot_uniform(dims...) = glorot_uniform(GLOBAL_RNG, dims...)
 # init funcs https://fluxml.ai/Flux.jl/previews/PR1612/utilities/
 
 # https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/losses/functions.jl
-cross_entropy_loss(y, ŷ) = sum(Constant(-1.0) .* y .* log.(ŷ))
 accuracy(m, x, y) = mean((m(x) .> 0.5) .== (y .> 0.5))
 
 
@@ -98,7 +98,10 @@ function mse_loss(ŷ::GraphNode, y::GraphNode)
 end
 
 function cross_entropy_loss(ŷ::GraphNode, y::GraphNode)
-    return sum(Constant(-1.0) .* y .* log.(ŷ))
+    ϵ = Constant(eps(Float32))
+    ŷ = ŷ .+ ϵ
+    loss = Constant(-1.0f0) .* (y .* log.(ŷ))
+    return sum(loss)
 end
 
 function gradient(model::Network)
