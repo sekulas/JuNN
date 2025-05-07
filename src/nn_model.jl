@@ -36,16 +36,17 @@ mutable struct Dense{F}
     bias::Union{Nothing, Variable}
     activation::F
 
-    function Dense(weights::Variable, bias::Bool = false, 
-        activation::F = identity) where {F}
-        
-        b = create_bias(weights.output, bias, size(weights.output,1))
+    function Dense(weights::Variable, 
+                   bias::Bool = false, 
+                   activation::F = identity) where {F}
+        b = create_bias(weights, bias)
         new{F}(weights, b, activation)
     end
 end
 
-function create_bias(weights::AbstractArray, bias::Bool, dims::Integer...)
-    bias ? Variable(fill!(similar(weights, dims...), 0)) : nothing
+function create_bias(weights::Variable, bias::Bool)
+    bias ? Variable(fill!(similar(weights.output, size(weights.output,1)), 0), 
+                    name="$(weights.name)_bias") : nothing
 end
 
 function Dense((in, out)::Pair{<:Integer, <:Integer}, activation::F=identity;
@@ -90,19 +91,65 @@ accuracy(m, x, y) = mean((m(x) .> 0.5) .== (y .> 0.5))
 # update! https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/optimise/train.jl
 
 
-function mse_loss(y_pred::GraphNode, y_true::GraphNode)
-    diff = y_pred .- y_true
+function mse_loss(ŷ::GraphNode, y::GraphNode)
+    diff = ŷ .- y
     squared = diff .^ Constant(2)
     return Constant(0.5) .* squared
 end
 
-function update_params!(model::Network, lr::Float32)
+function cross_entropy_loss(ŷ::GraphNode, y::GraphNode)
+    return sum(Constant(-1.0) .* y .* log.(ŷ))
+end
+
+function gradient(model::Network)
+    grads = []
     for layer in model.layers
         if isa(layer, Dense)
-            layer.weights.output .-= lr .* layer.weights.∇
-            #if !isnothing(layer.bias)
-            #    layer.bias.output .-= lr .* layer.bias.∇
-            #end
+            push!(grads, layer.weights.∇)
+            if !isnothing(layer.bias)
+                push!(grads, layer.bias.∇)
+            end
         end
     end
+    return grads
 end
+
+function update_params!(model::Network, lr::Float32; grads::Any, batch_len::Integer)
+    for (layer, ∇) in zip(model.layers, grads)
+        if isa(layer, Dense)
+            layer.weights.output .-= lr * ∇ / batch_len
+            if !isnothing(layer.bias)
+                layer.bias.output .-= lr * ∇ / batch_len
+            end
+        end
+    end
+    return nothing
+end
+
+# Initialize empty gradients with the same structure as model gradients
+function init_zero_gradients(model::Network)
+    grads = []
+    for layer in model.layers
+        if isa(layer, Dense) 
+            # Create zero arrays with same shape as gradient
+            push!(grads, zeros(eltype(layer.weights.∇), size(layer.weights.∇)))
+            if !isnothing(layer.bias)
+                push!(grads, zeros(eltype(layer.bias.∇), size(layer.bias.∇)))
+            end
+        end
+    end
+    return grads
+end
+
+# Accumulate gradients
+function accumulate_gradients!(grads, layer_grads)
+    for (g, lg) in zip(grads, layer_grads)
+        g .+= lg  # Element-wise addition
+    end
+    return grads
+end
+
+
+linear(x) = x
+ReLU(x) = max.(Constant(0.0), x)
+swish(x) = x ./ (Constant(1.0) .+ exp.(Constant(-1) * x))
