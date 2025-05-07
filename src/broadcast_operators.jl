@@ -17,8 +17,7 @@ backward(node::BroadcastedOperator{typeof(*)}, x, y, ∇) =
         Jy = diagm(x .* 𝟏)
         tuple(Jx' * ∇, Jy' * ∇)
     end
-
-
+# ( ∇ .* y,  ∇ .* x )
 
 Base.Broadcast.broadcasted(-, x::GraphNode, y::GraphNode) = 
     BroadcastedOperator(-, x, y)
@@ -43,9 +42,10 @@ backward(::BroadcastedOperator{typeof(sum)}, x, ∇) =
         J = 𝟏'
         tuple(J' * ∇)
     end
+# ( fill(∇, size(x)), )
 
 
-
+# Potencjalnie do potegi ^-1 zamiast dzielenia w funkcji aktywacji.
 Base.Broadcast.broadcasted(/, x::GraphNode, y::GraphNode) =
     BroadcastedOperator(/, x, y)
 forward(::BroadcastedOperator{typeof(/)}, x, y) = x ./ y
@@ -56,7 +56,8 @@ backward(node::BroadcastedOperator{typeof(/)}, x, y::Real, ∇) =
         Jy = (-x ./ y .^2)
         tuple(Jx' * ∇, Jy' * ∇)
     end
-
+    # ( ∇ ./ y,
+    #  -∇ .* x ./ (y .^ 2) )
 
 
 import Base: max
@@ -69,17 +70,22 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, ∇) =
         Jy = diagm(isless.(x, y))
         tuple(Jx' * ∇, Jy' * ∇)
     end
-
+    # let mx = x .> y      # or `>=` to break ties differently
+    #     in ( ∇ .* mx, ∇ .* .!mx )
 
 
 σ(x) = BroadcastedOperator(σ, x)
 forward(::BroadcastedOperator{typeof(σ)}, x) = 1.0 ./ (1.0 .+ exp.(-x))
 backward(node::BroadcastedOperator{typeof(σ)}, x, ∇) = 
-    let
+    # let
+    #     y = node.output
+    #     𝟏 = ones(length(y))
+    #     J = diagm(y .* (1.0 .- y))
+    #     tuple(J' * ∇)
+    # end
+    let 
         y = node.output
-        𝟏 = ones(length(y))
-        J = diagm(y .* (1.0 .- y))
-        tuple(J' * ∇)
+        tuple(∇ .* (y .* (1 .- y)))
     end
 
 Base.Broadcast.broadcasted(^, x::GraphNode, y::GraphNode) = 
@@ -93,6 +99,8 @@ backward(node::BroadcastedOperator{typeof(^)}, x, y, ∇) =
         Jy = diagm(log.(abs.(x)) .* x .^ y)
         tuple(Jx' * ∇, Jy' * ∇)
     end
+    # ( ∇ .* (y .* x .^ (y .- 1)),
+    #   ∇ .* (log.(abs.(x)) .* x .^ y) )
 
 Base.Broadcast.broadcasted(exp, x::GraphNode) = 
     BroadcastedOperator(exp, x)
@@ -104,6 +112,7 @@ backward(node::BroadcastedOperator{typeof(exp)}, x, ∇) =
         J = diagm(y)
         tuple(J' * ∇)
     end
+    # ( ∇ .* node.output, )
 
 Base.Broadcast.broadcasted(log, x::GraphNode) = 
     BroadcastedOperator(log, x)
@@ -111,18 +120,34 @@ forward(::BroadcastedOperator{typeof(log)}, x) =
     log.(x)
 backward(::BroadcastedOperator{typeof(log)}, x, ∇) = 
     tuple(diagm(1.0 ./ x)' * ∇)
+    # ( ∇ ./ x, )
 
 
 softmax(x::GraphNode) = BroadcastedOperator(softmax, x)
 forward(::BroadcastedOperator{typeof(softmax)}, x) = exp.(x) ./ sum(exp.(x))
 backward(node::BroadcastedOperator{typeof(softmax)}, x, ∇) = 
+    # let
+    #     y = node.output
+    #     J = diagm(y) .- y * y'
+    #     tuple(J' * ∇)
+    # end
     let
         y = node.output
-        J = diagm(y) .- y * y'
-        tuple(J' * ∇)
+        ω = sum(∇ .* y)
+        tuple(y .* (∇ .- ω))
     end
 
 Base.Broadcast.broadcasted(identity, x::GraphNode) = BroadcastedOperator(identity, x)
 forward(::BroadcastedOperator{typeof(identity)}, x) = x
 backward(::BroadcastedOperator{typeof(identity)}, x, ∇) = 
     tuple(∇)
+
+
+import Base: tanh
+tanh(x::GraphNode) = BroadcastedOperator(tanh, x)
+forward(::BroadcastedOperator{typeof(tanh)}, x) = tanh.(x)
+backward(node::BroadcastedOperator{typeof(tanh)}, x, ∇) =
+  let
+    y = node.output
+    tuple((1 .- y .^ 2) .* ∇)
+  end
