@@ -2,3 +2,9 @@ name = "JuMLP"
 uuid = "47b9319d-380c-409f-8d4d-bb5613218179"
 authors = ["sekulas <sekula.sebastian22@gmail.com>"]
 version = "0.1.0"
+
+[deps]
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+
+[compat]
+PyPlot = "2.11.6"
