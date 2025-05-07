@@ -728,7 +728,7 @@ end
 end
 
 @testset "Loss Functions" begin
-    @testset "Mean Squared Error" begin
+    @testset "Mean Squared Error" begin      
         y_true = Variable([1.0], name="y_true")
         y_pred = Variable([0.9], name="y_pred")
         
@@ -738,41 +738,28 @@ end
         
         expected_loss = 0.5 * (1.0 - 0.9)^2
         @test isapprox(loss_node.output..., expected_loss)
-        
+
         backward!(sorted)
-        
+
         expected_grad_pred = [0.9 - 1.0]
         @test isapprox(y_pred.∇, expected_grad_pred)
     end
     
     @testset "Cross Entropy Loss" begin
-        # Define cross entropy loss for testing
-        function cross_entropy_loss(y_true, y_pred)
-            return ScalarOperator(
-                (y_true, y_pred) -> -sum(y_true .* log.(y_pred .+ 1e-10)),
-                y_true, y_pred,
-                name="cross_entropy_loss"
-            )
-        end
+        y_true = Variable([0.0f0, 1.0f0], name="y_true")
+        y_pred = Variable([0.1f0, 0.9f0], name="y_pred")
         
-        # One-hot encoded true values and predicted probabilities
-        y_true = Variable([0.0, 1.0, 0.0], name="y_true")
-        y_pred = Variable([0.1, 0.8, 0.1], name="y_pred")
-        
-        loss_node = cross_entropy_loss(y_true, y_pred)
+        loss_node = cross_entropy_loss(y_pred, y_true)
         sorted = topological_sort(loss_node)
         forward!(sorted)
         
-        # Manually calculate expected cross entropy
-        expected = -sum([0.0, 1.0, 0.0] .* log.([0.1, 0.8, 0.1] .+ 1e-10))
-        @test isapprox(loss_node.output, expected)
-        
-        # Test backward pass
-        loss_node.∇ = 1.0
-        backward!(reverse(sorted))
-        
-        # Expected gradients for cross entropy: -y_true / y_pred
-        expected_grad_pred = -[0.0, 1.0, 0.0] ./ ([0.1, 0.8, 0.1] .+ 1e-10)
+        ϵ = eps(Float32)
+        expected_loss = -sum(y_true.output .* log.(y_pred.output .+ ϵ))
+        @test isapprox(loss_node.output, expected_loss)
+
+        backward!(sorted)
+
+        expected_grad_pred = Float32[0.0f0, -1.0f0/(0.9f0 + ϵ)]
         @test isapprox(y_pred.∇, expected_grad_pred)
     end
 end
@@ -801,12 +788,6 @@ end
             J = diagm(y) .- y * y'
             tuple(J' * ∇)
         end
-    
-    cross_entropy_loss(y_true, y_pred) = ScalarOperator(
-        (y_true, y_pred) -> -sum(y_true .* log.(y_pred .+ 1e-10)),
-        y_true, y_pred,
-        name="cross_entropy_loss"
-    )
     
     model = Network(
         Dense(input_neurons => hidden_neurons, σ, name="hidden"),
