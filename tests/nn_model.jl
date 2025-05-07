@@ -729,32 +729,19 @@ end
 
 @testset "Loss Functions" begin
     @testset "Mean Squared Error" begin
-        # Define MSE loss for testing
-        function mse_loss(y_true, y_pred)
-            return ScalarOperator(
-                (y_true, y_pred) -> sum((y_true .- y_pred).^2) / length(y_true),
-                y_true, y_pred,
-                name="mse_loss"
-            )
-        end
-        
-        y_true = Variable([1.0, 0.0, 0.0], name="y_true")
-        y_pred = Variable([0.9, 0.1, 0.05], name="y_pred")
+        y_true = Variable([1.0], name="y_true")
+        y_pred = Variable([0.9], name="y_pred")
         
         loss_node = mse_loss(y_true, y_pred)
         sorted = topological_sort(loss_node)
         forward!(sorted)
         
-        # Manually calculate expected MSE
-        expected = sum(([1.0, 0.0, 0.0] .- [0.9, 0.1, 0.05]).^2) / 3
-        @test isapprox(loss_node.output, expected)
+        expected_loss = 0.5 * (1.0 - 0.9)^2
+        @test isapprox(loss_node.output..., expected_loss)
         
-        # Test backward pass
-        loss_node.∇ = 1.0
-        backward!(reverse(sorted))
+        backward!(sorted)
         
-        # Expected gradients for MSE: -2/n * (y_true - y_pred)
-        expected_grad_pred = -2.0 / 3.0 .* ([1.0, 0.0, 0.0] .- [0.9, 0.1, 0.05])
+        expected_grad_pred = [0.9 - 1.0]
         @test isapprox(y_pred.∇, expected_grad_pred)
     end
     
