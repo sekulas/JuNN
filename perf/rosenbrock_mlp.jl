@@ -45,8 +45,31 @@ train_set  = shuffle(1:data_size)[1:train_size]
 test_set   = setdiff(1:data_size, train_set)
 
 graph = topological_sort(loss(x, y, model))
-for (i,n) in enumerate(graph)
-    print(i, ". "); println(n)
+# for (i,n) in enumerate(graph)
+#     print(i, ". "); println(n)
+# end
+
+# # Initialize empty gradients with the same structure as model gradients
+# function init_zero_gradients(model::Network)
+#     grads = []
+#     for layer in model.layers
+#         if isa(layer, Dense) 
+#             # Create zero arrays with same shape as gradient
+#             push!(grads, zeros(eltype(layer.weights.∇), size(layer.weights.∇)))
+#             if !isnothing(layer.bias)
+#                 push!(grads, zeros(eltype(layer.bias.∇), size(layer.bias.∇)))
+#             end
+#         end
+#     end
+#     return grads
+# end
+
+# Accumulate gradients
+function accumulate_gradients!(grads, layer_grads)
+    for (g, lg) in zip(grads, layer_grads)
+        g .+= lg  # Element-wise addition
+    end
+    return grads
 end
 
 function test(set)
@@ -83,10 +106,14 @@ function train!(batch, model, graph, lr=0.01f0)
     return nothing
 end
 
+losses = []
 for i=1:epochs
     shuffle!(train_set)
     train!(train_set[1:10], model, graph, η)
-    test(test_set)
+
+    loss_val = test(test_set)
+    println("Epoch: $i, Loss: $loss_val")
+    lossess = push!(losses, loss_val)
 end
 
 x = Variable([0.], name="x")
