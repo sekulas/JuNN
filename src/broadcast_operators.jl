@@ -11,13 +11,13 @@ import LinearAlgebra: diagm
 Base.Broadcast.broadcasted(*, x::GraphNode, y::GraphNode) = BroadcastedOperator(*, x, y)
 forward(::BroadcastedOperator{typeof(*)}, x, y) = x .* y
 backward(node::BroadcastedOperator{typeof(*)}, x, y, ∇) =
-    let
-        𝟏 = ones(length(node.output))
-        Jx = diagm(y .* 𝟏)
-        Jy = diagm(x .* 𝟏)
-        tuple(Jx' * ∇, Jy' * ∇)
-    end
-# ( ∇ .* y,  ∇ .* x )
+    # let
+    #     𝟏 = ones(length(node.output))
+    #     Jx = diagm(y .* 𝟏)
+    #     Jy = diagm(x .* 𝟏)
+    #     tuple(Jx' * ∇, Jy' * ∇)
+    # end
+( ∇ .* y,  ∇ .* x )
 
 Base.Broadcast.broadcasted(-, x::GraphNode, y::GraphNode) = 
     BroadcastedOperator(-, x, y)
@@ -43,6 +43,18 @@ backward(::BroadcastedOperator{typeof(sum)}, x, ∇) =
         tuple(J' * ∇)
     end
 # ( fill(∇, size(x)), )
+
+import Statistics: mean
+mean(x::GraphNode) = BroadcastedOperator(mean, x)
+forward(::BroadcastedOperator{typeof(mean)}, x) =
+    mean(x)
+backward(::BroadcastedOperator{typeof(mean)}, x, ∇) =
+    let n = length(x)
+        δ = fill(∇ / n, n)
+    in
+        tuple(δ)
+    end
+
 
 
 # Potencjalnie do potegi ^-1 zamiast dzielenia w funkcji aktywacji.
@@ -74,6 +86,7 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, ∇) =
     #     in ( ∇ .* mx, ∇ .* .!mx )
 
 
+sigmoid(x) = BroadcastedOperator(σ, x)
 σ(x) = BroadcastedOperator(σ, x)
 forward(::BroadcastedOperator{typeof(σ)}, x) = 1.0 ./ (1.0 .+ exp.(-x))
 backward(node::BroadcastedOperator{typeof(σ)}, x, ∇) = 
@@ -119,8 +132,8 @@ Base.Broadcast.broadcasted(log, x::GraphNode) =
 forward(::BroadcastedOperator{typeof(log)}, x) = 
     log.(x)
 backward(::BroadcastedOperator{typeof(log)}, x, ∇) = 
-    tuple(diagm(1.0 ./ x)' * ∇)
-    # ( ∇ ./ x, )
+    # tuple(diagm(1.0 ./ x)' * ∇)
+    ( ∇ ./ x, )
 
 
 softmax(x::GraphNode) = BroadcastedOperator(softmax, x)
@@ -151,3 +164,12 @@ backward(node::BroadcastedOperator{typeof(tanh)}, x, ∇) =
     y = node.output
     tuple((1 .- y .^ 2) .* ∇)
   end
+
+ReLU(x::GraphNode) = BroadcastedOperator(ReLU, x)
+forward(::BroadcastedOperator{typeof(ReLU)}, x) = max.(0, x)
+backward(node::BroadcastedOperator{typeof(ReLU)}, x, ∇) =
+    let
+        y    = node.output
+        mask = y .> 0
+        tuple(mask .* ∇)            
+    end
