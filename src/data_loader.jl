@@ -33,7 +33,7 @@ end
 @propagate_inbounds function Base.iterate(dl::DataLoader, i=0)     
     i >= dl.num_batches && return nothing
     if dl.shuffle && i == 0
-        shuffle!(dl.rng, dl.indices)
+        shuffle!(dl.rng, dl.indicies_obs)
     end
 
     next_idx = min(i + dl.batchsize, dl.num_obs)
