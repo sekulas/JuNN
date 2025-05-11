@@ -1,0 +1,53 @@
+Data loaded successfully.
+X_train size: (17703, 8000)
+y_train size: (1, 8000)
+X_test size: (17703, 2000)
+y_test size: (1, 2000)
+Training started...
+  iter 1000 → loss = 7.903247 | acc = 1.0
+  iter 2000 → loss = 7.769734 | acc = 1.0
+  iter 3000 → loss = 7.2903986 | acc = 1.0
+  iter 4000 → loss = 6.0416846 | acc = 1.0
+  iter 5000 → loss = 3.8714755 | acc = 1.0
+  iter 6000 → loss = 2.430828 | acc = 1.0
+  iter 7000 → loss = 1.51168 | acc = 1.0
+  iter 8000 → loss = 1.6077455 | acc = 1.0
+Epoch 1 finished in 89.24s; 
+  iter 1000 → loss = 0.85458964 | acc = 1.0
+  iter 2000 → loss = 0.8409279 | acc = 1.0
+  iter 3000 → loss = 0.8697129 | acc = 1.0
+  iter 4000 → loss = 0.7544789 | acc = 1.0
+  iter 5000 → loss = 0.6447769 | acc = 1.0
+  iter 6000 → loss = 0.7002303 | acc = 1.0
+  iter 7000 → loss = 0.87593085 | acc = 1.0
+  iter 8000 → loss = 0.7929023 | acc = 1.0
+Epoch 2 finished in 78.94s; 
+  iter 1000 → loss = 0.4332877 | acc = 1.0
+  iter 2000 → loss = 0.4433012 | acc = 1.0
+  iter 3000 → loss = 0.554304 | acc = 1.0
+  iter 4000 → loss = 0.52301186 | acc = 1.0
+  iter 5000 → loss = 0.5166703 | acc = 1.0
+  iter 6000 → loss = 0.47853318 | acc = 1.0
+  iter 7000 → loss = 0.57958496 | acc = 1.0
+  iter 8000 → loss = 0.36755455 | acc = 1.0
+Epoch 3 finished in 81.62s; 
+  → Epoch 4: decayed lr to 0.0009999999
+  iter 1000 → loss = 0.54183656 | acc = 1.0
+  iter 2000 → loss = 0.4656283 | acc = 1.0
+  iter 3000 → loss = 0.5451156 | acc = 1.0
+  iter 4000 → loss = 0.36694103 | acc = 1.0
+  iter 5000 → loss = 0.5569893 | acc = 1.0
+  iter 6000 → loss = 0.4430924 | acc = 1.0
+  iter 7000 → loss = 0.4548622 | acc = 1.0
+  iter 8000 → loss = 0.55785656 | acc = 1.0
+Epoch 4 finished in 81.0s; 
+  iter 1000 → loss = 0.5460317 | acc = 1.0
+  iter 2000 → loss = 0.5317666 | acc = 1.0
+  iter 3000 → loss = 0.45869356 | acc = 1.0
+  iter 4000 → loss = 0.382125 | acc = 1.0
+  iter 5000 → loss = 0.59233 | acc = 1.0
+  iter 6000 → loss = 0.36777255 | acc = 1.0
+  iter 7000 → loss = 0.43947956 | acc = 1.0
+  iter 8000 → loss = 0.46574706 | acc = 1.0
+Epoch 5 finished in 77.37s; 
+All epochs done in 408.16 seconds.
