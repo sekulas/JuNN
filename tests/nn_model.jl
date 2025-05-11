@@ -749,7 +749,7 @@ end
         y_true = Variable([0.0f0, 1.0f0], name="y_true")
         y_pred = Variable([0.1f0, 0.9f0], name="y_pred")
         
-        loss_node = cross_entropy_loss(y_pred, y_true)
+        loss_node = cross_entropy_loss(y_true, y_pred)
         sorted = topological_sort(loss_node)
         forward!(sorted)
         
@@ -801,7 +801,7 @@ end
     @testset "LFMI: Loss Calculation" begin
         function loss(x, y, model)
             ŷ = model(x)
-            return cross_entropy_loss(ŷ, y)
+            return cross_entropy_loss(y, ŷ)
         end
         
         loss_node = loss(x, y, model)
@@ -821,7 +821,7 @@ end
     @testset "LFMI: Backward Pass" begin
         function loss(x, y, model)
             ŷ = model(x)
-            return cross_entropy_loss(ŷ, y)
+            return cross_entropy_loss(y, ŷ)
         end
         
         loss_node = loss(x, y, model)

@@ -79,8 +79,6 @@ glorot_uniform(dims...) = glorot_uniform(GLOBAL_RNG, dims...)
 # init funcs https://fluxml.ai/Flux.jl/previews/PR1612/utilities/
 
 # https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/losses/functions.jl
-accuracy(m, x, y) = mean((m(x) .> 0.5) .== (y .> 0.5))
-
 
 # https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/gradient.jl#L3
 # https://github.com/FluxML/Zygote.jl/blob/1b914d994aea236bcb6d3d0cd6c099d86cede101/src/compiler/interface.jl#L152
@@ -91,17 +89,25 @@ accuracy(m, x, y) = mean((m(x) .> 0.5) .== (y .> 0.5))
 # update! https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/optimise/train.jl
 
 
-function mse_loss(ŷ::GraphNode, y::GraphNode)
+function mse_loss(y::GraphNode, ŷ::GraphNode)
     diff = ŷ .- y
     squared = diff .^ Constant(2)
     return Constant(0.5) .* squared
 end
 
-function cross_entropy_loss(ŷ::GraphNode, y::GraphNode)
+function cross_entropy_loss(y::GraphNode, ŷ::GraphNode)
     ϵ = Constant(eps(Float32))
     ŷ = ŷ .+ ϵ
     loss = Constant(-1.0f0) .* (y .* log.(ŷ))
     return sum(loss)
+end
+
+function binary_cross_entropy(y::GraphNode, ŷ::GraphNode)
+    ϵ = Constant(eps(Float32))
+    #@assert size(ŷ.output) == size(y.output) "ŷ and y must have the same shape"
+    losses = Constant(-1.0f0) .* y .* log.(ŷ .+ ϵ) .- (Constant(1.0f0) .- y) .* log.(Constant(1.0f0) .- ŷ .+ ϵ)
+    #losses = @. - (y * log(ŷ + eps) + (1 - y) * log(1 - ŷ + eps))
+    return mean(losses)
 end
 
 function gradient(model::Network)
@@ -112,6 +118,8 @@ function gradient(model::Network)
             if !isnothing(layer.bias)
                 push!(grads, layer.bias.∇)
             end
+        else
+            error("TODO: Unsupported layer type: $(typeof(layer))")
         end
     end
     return grads
@@ -128,31 +136,3 @@ function update_params!(model::Network, lr::Float32; grads::Any, batch_len::Inte
     end
     return nothing
 end
-
-# Initialize empty gradients with the same structure as model gradients
-function init_zero_gradients(model::Network)
-    grads = []
-    for layer in model.layers
-        if isa(layer, Dense) 
-            # Create zero arrays with same shape as gradient
-            push!(grads, zeros(eltype(layer.weights.∇), size(layer.weights.∇)))
-            if !isnothing(layer.bias)
-                push!(grads, zeros(eltype(layer.bias.∇), size(layer.bias.∇)))
-            end
-        end
-    end
-    return grads
-end
-
-# Accumulate gradients
-function accumulate_gradients!(grads, layer_grads)
-    for (g, lg) in zip(grads, layer_grads)
-        g .+= lg  # Element-wise addition
-    end
-    return grads
-end
-
-
-linear(x) = x
-ReLU(x) = max.(Constant(0.0), x)
-swish(x) = x ./ (Constant(1.0) .+ exp.(Constant(-1) * x))
