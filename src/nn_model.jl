@@ -104,9 +104,7 @@ end
 
 function binary_cross_entropy(y::GraphNode, ŷ::GraphNode)
     ϵ = Constant(eps(Float32))
-    #@assert size(ŷ.output) == size(y.output) "ŷ and y must have the same shape"
     losses = Constant(-1.0f0) .* y .* log.(ŷ .+ ϵ) .- (Constant(1.0f0) .- y) .* log.(Constant(1.0f0) .- ŷ .+ ϵ)
-    #losses = @. - (y * log(ŷ + eps) + (1 - y) * log(1 - ŷ + eps))
     return mean(losses)
 end
 
@@ -125,14 +123,14 @@ function gradient(model::Network)
     return grads
 end
 
-function update_params!(model::Network, lr::Float32; grads::Any, batch_len::Integer)
-    for (layer, ∇) in zip(model.layers, grads)
-        if isa(layer, Dense)
-            layer.weights.output .-= lr * ∇ / batch_len
-            if !isnothing(layer.bias)
-                layer.bias.output .-= lr * ∇ / batch_len
-            end
-        end
-    end
-    return nothing
-end
+# function update_params!(model::Network, lr::Float32; grads::Any, batch_len::Integer)
+#     for (layer, ∇) in zip(model.layers, grads)
+#         if isa(layer, Dense)
+#             layer.weights.output .-= lr * ∇ / batch_len
+#             if !isnothing(layer.bias)
+#                 layer.bias.output .-= lr * ∇ / batch_len
+#             end
+#         end
+#     end
+#     return nothing
+# end
