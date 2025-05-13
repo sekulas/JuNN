@@ -147,15 +147,7 @@ function learn!(dataset_loader,
 end
 
 
-if !@isdefined(inputs) || !@isdefined(targets)
-    println("Loading/Mocking Iris data for main script execution...")
-    _N_SAMPLES = 150; _N_FEATURES = 4; _N_CLASSES = 3
-    global inputs = rand(Float32, _N_SAMPLES, _N_FEATURES)
-    _temp_targets_idx = rand(1:_N_CLASSES, _N_SAMPLES)
-    global targets = zeros(Float32, _N_SAMPLES, _N_CLASSES)
-    for i in 1:_N_SAMPLES; targets[i, _temp_targets_idx[i]] = 1.0f0; end
-    println("Iris data loaded/mocked: $_N_SAMPLES samples.")
-end
+include("../data/iris.jl")
 
 input_neurons = 4
 hidden_neurons = 8
