@@ -137,7 +137,13 @@ backward(::BroadcastedOperator{typeof(log)}, x, ∇) =
 
 
 softmax(x::GraphNode) = BroadcastedOperator(softmax, x)
-forward(::BroadcastedOperator{typeof(softmax)}, x) = exp.(x) ./ sum(exp.(x))
+forward(::BroadcastedOperator{typeof(softmax)}, x) =
+    let 
+        max_x = maximum(x)
+        exp_x_shifted = exp.(x .- max_x)
+        sum_exp_x_shifted = sum(exp_x_shifted)
+        y = exp_x_shifted ./ sum_exp_x_shifted 
+    end
 backward(node::BroadcastedOperator{typeof(softmax)}, x, ∇) = 
     # let
     #     y = node.output
