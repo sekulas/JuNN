@@ -23,7 +23,6 @@ batchsize = 4
 X_data = Float32.(inputs')  # features x N_samples
 Y_data = Float32.(targets') # classes x N_samples
 
-# Split into train/test sets (e.g., 80% train, 20% test)
 n_samples = size(X_data, 2)
 n_train = Int(floor(0.7 * n_samples))
 shuffle_idx = shuffle(1:n_samples)
