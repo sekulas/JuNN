@@ -42,46 +42,46 @@ include("../src/backward.jl")
 #     @test dense_without_bias.biases === nothing
 # end
 
-# @testset "Network Tests" begin
-#     @testset "Empty Network" begin
-#         network = Network()
+# @testset "Chain Tests" begin
+#     @testset "Empty Chain" begin
+#         Chain = Chain()
 #         x = 5
-#         @test network(x) == x
+#         @test Chain(x) == x
 #     end
 
 #     @testset "Single Layer" begin
 #         f = x -> x + 1
-#         network = Network(f)
+#         Chain = Chain(f)
 #         x = 5
-#         @test network(x) == f(x)
+#         @test Chain(x) == f(x)
 #     end
 
 #     @testset "Multiple Layers" begin
 #         f = x -> x + 1
 #         g = x -> x * 2
 #         h = x -> x - 3
-#         network = Network(f, g, h)
+#         Chain = Chain(f, g, h)
 #         x = 5
 #         expected = h(g(f(x)))
-#         @test network(x) == expected
+#         @test Chain(x) == expected
 #     end
 
 #     @testset "Different Layer Types" begin
 #         f = x -> x .+ 1  # Operacja na wektorze
 #         g = x -> sum(x)  # Redukcja do skalara
-#         network = Network(f, g)
+#         Chain = Chain(f, g)
 #         x = [1, 2, 3]
 #         expected = g(f(x))
-#         @test network(x) == expected
+#         @test Chain(x) == expected
 #     end
 
 #     @testset "Input and Output Types" begin
 #         f = x -> string(x)
 #         g = s -> length(s)
-#         network = Network(f, g)
+#         Chain = Chain(f, g)
 #         x = 123
 #         expected = g(f(x))
-#         @test network(x) == expected
+#         @test Chain(x) == expected
 #     end
 # end
 
@@ -175,7 +175,7 @@ include("../src/backward.jl")
 #     @testset "One Dense Pass x->x" begin
 #         # Arrange
 #         w = Variable([1.0 2.0; 3.0 4.0], name="weights")
-#         model = Network(
+#         model = Chain(
 #             Dense(w, true, identity),
 #         )
 
@@ -204,7 +204,7 @@ include("../src/backward.jl")
 #         w = Variable([1.0 2.0; 3.0 4.0], name="weights")
 
 
-#         model = Network(
+#         model = Chain(
 #             Dense(w, true, doubleInput)
 #         )
 
@@ -228,14 +228,14 @@ include("../src/backward.jl")
 #     end
 # end
 
-# @testset "Dense Network" begin
+# @testset "Dense Chain" begin
 #     @testset "Construction" begin
 #         # Create layers
 #         layer1 = Dense(2 => 3, tanh, name="hidden")
 #         layer2 = Dense(3 => 1, σ, name="output")
         
-#         # Create network
-#         net = Network(layer1, layer2)
+#         # Create Chain
+#         net = Chain(layer1, layer2)
         
 #         @test net.layers isa Tuple
 #         @test length(net.layers) == 2
@@ -246,7 +246,7 @@ include("../src/backward.jl")
 #     @testset "Forward Pass" begin
 #         layer1 = Dense(2 => 3, tanh, name="hidden")
 #         layer2 = Dense(3 => 1, σ, name="output")
-#         net = Network(layer1, layer2)
+#         net = Chain(layer1, layer2)
         
 #         layer1.weights.output = [0.1 0.2; 0.3 0.4; 0.5 0.6]
 #         layer1.bias = Variable([0.01, 0.02, 0.03], name="bias1")
@@ -280,7 +280,7 @@ include("../src/backward.jl")
 #     σ = tanh
 #     softmax = z -> let y = exp.(z); y ./ sum(y) end
     
-#     model = Network(
+#     model = Chain(
 #         Dense(input_neurons => hidden_neurons, σ, name="x̂"),
 #         Dense(hidden_neurons => output_neurons, softmax, name="ŷ"),
 #     )
@@ -362,7 +362,7 @@ include("../src/backward.jl")
 # end
 
 # @testset "End-to-End Model Training" begin
-#     # This test simulates a simple training loop for the neural network
+#     # This test simulates a simple training loop for the neural Chain
     
 #     # Define utility functions for testing
 #     function update_weights!(model, learning_rate=0.01)
@@ -406,7 +406,7 @@ include("../src/backward.jl")
 #     hidden_neurons = 3
 #     output_neurons = 2
     
-#     model = Network(
+#     model = Chain(
 #         Dense(input_neurons => hidden_neurons, tanh, name="hidden"),
 #         Dense(hidden_neurons => output_neurons, 
 #               z -> let y = exp.(z); y ./ sum(y) end, 
@@ -445,46 +445,46 @@ include("../src/backward.jl")
 #     @test true
 # end
 
-@testset "Network Tests" begin
-    @testset "Empty Network" begin
-        network = Network()
+@testset "Chain Tests" begin
+    @testset "Empty Chain" begin
+        Chain = Chain()
         x = 5
-        @test network(x) == x
+        @test Chain(x) == x
     end
 
     @testset "Single Layer" begin
         f = x -> x + 1
-        network = Network(f)
+        Chain = Chain(f)
         x = 5
-        @test network(x) == f(x)
+        @test Chain(x) == f(x)
     end
 
     @testset "Multiple Layers" begin
         f = x -> x + 1
         g = x -> x * 2
         h = x -> x - 3
-        network = Network(f, g, h)
+        Chain = Chain(f, g, h)
         x = 5
         expected = h(g(f(x)))
-        @test network(x) == expected
+        @test Chain(x) == expected
     end
 
     @testset "Different Layer Types" begin
         f = x -> x .+ 1  # Operation on vector
         g = x -> sum(x)  # Reduction to scalar
-        network = Network(f, g)
+        Chain = Chain(f, g)
         x = [1, 2, 3]
         expected = g(f(x))
-        @test network(x) == expected
+        @test Chain(x) == expected
     end
 
     @testset "Input and Output Types" begin
         f = x -> string(x)
         g = s -> length(s)
-        network = Network(f, g)
+        Chain = Chain(f, g)
         x = 123
         expected = g(f(x))
-        @test network(x) == expected
+        @test Chain(x) == expected
     end
 end
 
@@ -579,7 +579,7 @@ backward(::BroadcastedOperator{typeof(doubleInput)}, x, ∇) =
     @testset "One Dense Pass x->x" begin
         # Arrange
         w = Variable([1.0 2.0; 3.0 4.0], name="weights")
-        model = Network(
+        model = Chain(
             Dense(w, true, identity),
         )
 
@@ -606,7 +606,7 @@ backward(::BroadcastedOperator{typeof(doubleInput)}, x, ∇) =
         # Arrange
         w = Variable([1.0 2.0; 3.0 4.0], name="weights")
 
-        model = Network(
+        model = Chain(
             Dense(w, true, doubleInput)
         )
 
@@ -629,14 +629,14 @@ backward(::BroadcastedOperator{typeof(doubleInput)}, x, ∇) =
     end
 end
 
-@testset "Dense Network" begin
+@testset "Dense Chain" begin
     @testset "Construction" begin
         # Create layers
         layer1 = Dense(2 => 3, tanh, name="hidden")
         layer2 = Dense(3 => 1, σ, name="output")
         
-        # Create network
-        net = Network(layer1, layer2)
+        # Create Chain
+        net = Chain(layer1, layer2)
         
         @test net.layers isa Tuple
         @test length(net.layers) == 2
@@ -647,7 +647,7 @@ end
     @testset "Forward Pass" begin
         layer1 = Dense(2 => 3, tanh, name="hidden")
         layer2 = Dense(3 => 1, σ, name="output")
-        net = Network(layer1, layer2)
+        net = Chain(layer1, layer2)
         
         layer1.weights.output = [0.1 0.2; 0.3 0.4; 0.5 0.6]
         layer1.bias = Variable([0.01, 0.02, 0.03], name="bias1")
@@ -769,7 +769,7 @@ end
     hidden_neurons = 3
     output_neurons = 2
      
-    model = Network(
+    model = Chain(
         Dense(input_neurons => hidden_neurons, σ, name="hidden"),
         Dense(hidden_neurons => output_neurons, softmax, name="output"),
     )
