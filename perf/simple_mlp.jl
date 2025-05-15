@@ -14,7 +14,7 @@ include("../src/nn_model.jl")
 # y_test = load("./data/imdb_dataset_prepared.jld2", "y_test")
 # X = (X_train, y_train)
 
-function build_and_run_network(model::Network, x::Variable, y::Variable; epochs=10, lr=0.01f0)
+function build_and_run_Chain(model::Chain, x::Variable, y::Variable; epochs=10, lr=0.01f0)
     losses = Float64[]
     
     prediction = model(x)
@@ -41,7 +41,7 @@ function build_and_run_network(model::Network, x::Variable, y::Variable; epochs=
 end
 
 function run_example()
-    model = Network(
+    model = Chain(
         Dense(2 => 10, σ, name="dense1"),
         Dense(10 => 1, name="ŷ"),
     );
@@ -50,7 +50,7 @@ function run_example()
     y = Variable([0.064], name="y")
 
     final_pred, losses = 
-        build_and_run_network(model, x, y, epochs=1000, lr=0.005f0)
+        build_and_run_Chain(model, x, y, epochs=1000, lr=0.005f0)
     println("\nFinal prediction: $(final_pred.output)")
     println("Target: $(y.output)")
     println("Final loss: $(last(losses))")

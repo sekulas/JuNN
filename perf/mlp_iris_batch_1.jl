@@ -169,7 +169,7 @@ y_node = Variable(zeros(Float32, output_neurons, 1), name="y_true_label_sample")
 dataset_loader = DataLoader((X_data, Y_data), batchsize=1, shuffle=true)
 println("DataLoader created. Effective total samples (batches): ", length(dataset_loader))
 
-model = Network(
+model = Chain(
     Dense((input_neurons => hidden_neurons), name="hidden_dense"),
     Dense((hidden_neurons => output_neurons), softmax, name="softmax_dense")
 )

@@ -20,7 +20,7 @@ y = Variable(zeros(output_neurons), name="y")
 η = 0.001f0
 epochs = 900
 
-model = Network(
+model = Chain(
     Dense(input_neurons => hidden_neurons, 
           σ,
        #   bias = true,
@@ -50,7 +50,7 @@ graph = topological_sort(loss(x, y, model))
 # end
 
 # # Initialize empty gradients with the same structure as model gradients
-# function init_zero_gradients(model::Network)
+# function init_zero_gradients(model::Chain)
 #     grads = []
 #     for layer in model.layers
 #         if isa(layer, Dense) 
