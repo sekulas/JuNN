@@ -29,7 +29,7 @@ X_test = Float32.(X_test)
 y_test = Float32.(y_test)
 
 
-batch_size = 16
+batch_size = 32
 
 dataset = DataLoader((X_train, y_train), batchsize=batch_size, shuffle=true)
 testset = DataLoader((X_test, y_test), batchsize=batch_size, shuffle=false)
@@ -42,16 +42,12 @@ model = Chain(
 )
 
 function compute_accuracy(pred, actual)
-    if length(pred) > 1
-        return mean((pred .> 0.5f0) .== (actual .> 0.5f0))
-    else
-        return (pred[1] > 0.5f0) == (actual[1] > 0.5f0) ? 1.0f0 : 0.0f0
-    end
+    (pred[1] > 0.5f0) == (actual[1] > 0.5f0) ? 1.0f0 : 0.0f0
 end
 
 net = NeuralNetwork(model, Adam(), binary_cross_entropy, compute_accuracy)
 
-epochs = 1000
+epochs = 60
 for epoch in 1:epochs
     t = @elapsed begin
         train_loss, train_acc = train!(net, dataset)
