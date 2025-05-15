@@ -41,8 +41,8 @@ model = Chain(
     Dense((32 => 1), σ, name="output_layer")
 )
 
-function compute_accuracy(pred, actual)
-    (pred[1] > 0.5f0) == (actual[1] > 0.5f0) ? 1.0f0 : 0.0f0
+function compute_accuracy(actual, pred)
+    (actual[1] > 0.5f0) == (pred[1] > 0.5f0) ? 1.0f0 : 0.0f0
 end
 
 net = NeuralNetwork(model, Adam(), binary_cross_entropy, compute_accuracy)
