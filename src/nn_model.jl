@@ -1,136 +1,123 @@
 using Random: GLOBAL_RNG, AbstractRNG
 include("structs.jl")
 include("broadcast_operators.jl")
+include("layers.jl")
 
-struct Network{T<:Tuple}
-    layers::T
+struct NeuralNetwork
+    model::Chain
+    optimizer::Any
+    loss::Function
+    accuracy::Function
+    x_node::Variable
+    y_node::Variable
+    y_pred_node::GraphNode
+    sorted_graph::Vector{GraphNode}
+    params::Vector{Variable}
 end
 
-Network(layers...) = Network(layers)
+function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::Function)
+    input_size = size(model.layers[1].weights.output, 2)
+    output_size = size(model.layers[end].weights.output, 1)
+    
+    x_node = Variable(zeros(Float32, input_size, 1), name="x_input")
+    y_node = Variable(zeros(Float32, output_size, 1), name="y_true")
+    
+    y_pred_node = model(x_node)
+    loss_node = loss(y_node, y_pred_node)
+    sorted_graph = topological_sort(loss_node)
 
-# @code_lowered
-(c::Network)(x) = _apply_layer_sequence(c.layers, x)
-# @generated function _apply_layer_sequence(layers::Tuple{Vararg{Any,N}}, x) where {N}
-#     symbols = vcat(:x, [gensym() for _ in 1:N])
-#     calls = [:($(symbols[i+1]) = layers[$i]($(symbols[i]))) for i in 1:N]
-#     Expr(:block, calls...)
-# end
-@generated function _apply_layer_sequence(layers::Tuple{Vararg{Any,N}}, input) where {N}
-    intermediate_outputs = [gensym() for _ in 1:N]
+    params = get_params(model)
     
-    current_output = :input
-    
-    assignments = []
-    for layer_index in 1:N
-        next_output = intermediate_outputs[layer_index]
-        push!(assignments, :($next_output = layers[$layer_index]($current_output)))
-        current_output = next_output
+    NeuralNetwork(model, optimizer, loss, accuracy, x_node, y_node, y_pred_node, sorted_graph, params)
+end
+
+function train!(net::NeuralNetwork, dataset::DataLoader)
+    batch_size = dataset.batchsize
+    total_loss = 0.0f0
+    total_acc = 0.0f0
+    iterations = 0
+    grads = [zeros(size(p.output)) for p in net.params]
+
+    for (x_batch, y_batch) in dataset
+        loss, acc = 
+            gradient!(grads, net, x_batch, y_batch, batch_size)
+
+        optimize!(net.optimizer, net.params, grads)
+        
+        total_loss += loss
+        total_acc += acc
+
+        iterations += 1
+    end
+
+    return (total_loss / iterations, total_acc / iterations)
+end
+
+function gradient!(grads, net, x_batch, y_batch, batch_size)
+    batch_loss = 0.0f0
+    batch_acc = 0.0f0
+
+    for i in 1:batch_size
+        x_sample = x_batch[:, i:i]
+        y_sample = y_batch[:, i:i]
+        
+        net.x_node.output .= x_sample
+        net.y_node.output .= y_sample
+        
+        batch_loss += forward!(net.sorted_graph)
+        batch_acc += net.accuracy(y_sample, net.y_pred_node.output)        
+
+        backward!(net.sorted_graph)
+        
+        accumulate_gradients!(grads, net.params)
+    end
+
+    for i in 1:length(grads)
+        grads[i] ./= batch_size
     end
     
-    Expr(:block, assignments..., current_output)
+    return (batch_loss / batch_size, batch_acc / batch_size) 
 end
 
-# https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/layers/basic.jl#L179
-# TODO: TYPED MATRIXES INSTEAD OF VARIABLES??
-mutable struct Dense{F}
-    weights::Variable
-    bias::Union{Nothing, Variable}
-    activation::F
-
-    function Dense(weights::Variable, 
-                   bias::Bool = false, 
-                   activation::F = identity) where {F}
-        b = create_bias(weights, bias)
-        new{F}(weights, b, activation)
+function accumulate_gradients!(grad_accumulator::Vector, params::Vector)
+    for (i, param) in enumerate(params)
+        grad_accumulator[i] .+= param.∇
     end
 end
 
-function create_bias(weights::Variable, bias::Bool)
-    bias ? Variable(fill!(similar(weights.output, size(weights.output,1)), 0), 
-                    name="$(weights.name)_bias") : nothing
-end
+function evaluate(net, testset::DataLoader)
+    batch_size = testset.batchsize
+    total_loss = 0.0f0
+    total_acc = 0.0f0
+    iterations = 0
 
-function Dense((in, out)::Pair{<:Integer, <:Integer}, activation::F=identity;
-               init = glorot_uniform, 
-               bias::Bool = false, 
-               name="dense_$in=>$out") where {F}
-    Dense(Variable(init(out, in), name=name), bias, activation)
-end
+    for (x_batch, y_batch) in testset
+        loss, acc = 
+            test!(net, x_batch, y_batch, batch_size)
+        
+        total_loss += loss
+        total_acc += acc
 
-function (l::Dense)(x::GraphNode)
-    #TODO: Size checking    
-    z = l.weights * x
-    
-    if !isnothing(l.bias)
-        z = z .+ l.bias
+        iterations += 1
     end
-    
-    return l.activation(z)
+
+    return (total_loss / iterations, total_acc / iterations)
 end
 
-#nfan() = 1, 1 # fan_in, fan_out
-#nfan(n) = 1, n # A vector is treated as a n×1 matrix
-nfan(n_out, n_in) = n_in, n_out # In case of Dense kernels: arranged as matrices
+function test!(net, x_batch, y_batch, batch_size)
+    batch_loss = 0.0f0
+    batch_acc = 0.0f0
 
-glorot_uniform(rng::AbstractRNG, dims...) = (rand(rng, Float32, dims...) .- 0.5f0) .* sqrt(24.0f0 / sum(nfan(dims...)))
-glorot_uniform(dims...) = glorot_uniform(GLOBAL_RNG, dims...)
-
-
-# init funcs https://fluxml.ai/Flux.jl/previews/PR1612/utilities/
-
-# https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/losses/functions.jl
-
-# https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/gradient.jl#L3
-# https://github.com/FluxML/Zygote.jl/blob/1b914d994aea236bcb6d3d0cd6c099d86cede101/src/compiler/interface.jl#L152
-
-
-# Optimisers
-# https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/layers/basic.jl#L85
-# update! https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/optimise/train.jl
-
-
-function mse_loss(y::GraphNode, ŷ::GraphNode)
-    diff = ŷ .- y
-    squared = diff .^ Constant(2)
-    return Constant(0.5) .* squared
-end
-
-function cross_entropy_loss(y::GraphNode, ŷ::GraphNode)
-    ϵ = Constant(eps(Float32))
-    ŷ = ŷ .+ ϵ
-    loss = Constant(-1.0f0) .* (y .* log.(ŷ))
-    return sum(loss)
-end
-
-function binary_cross_entropy(y::GraphNode, ŷ::GraphNode)
-    ϵ = Constant(eps(Float32))
-    losses = Constant(-1.0f0) .* y .* log.(ŷ .+ ϵ) .- (Constant(1.0f0) .- y) .* log.(Constant(1.0f0) .- ŷ .+ ϵ)
-    return mean(losses)
-end
-
-function gradient(model::Network)
-    grads = []
-    for layer in model.layers
-        if isa(layer, Dense)
-            push!(grads, layer.weights.∇)
-            if !isnothing(layer.bias)
-                push!(grads, layer.bias.∇)
-            end
-        else
-            error("TODO: Unsupported layer type: $(typeof(layer))")
-        end
+    for i in 1:batch_size
+        x_sample = x_batch[:, i:i]
+        y_sample = y_batch[:, i:i]
+        
+        net.x_node.output .= x_sample
+        net.y_node.output .= y_sample
+        
+        batch_loss += forward!(net.sorted_graph)
+        batch_acc += net.accuracy(y_sample, net.y_pred_node.output)        
     end
-    return grads
-end
 
-# function update_params!(model::Network, lr::Float32; grads::Any, batch_len::Integer)
-#     for (layer, ∇) in zip(model.layers, grads)
-#         if isa(layer, Dense)
-#             layer.weights.output .-= lr * ∇ / batch_len
-#             if !isnothing(layer.bias)
-#                 layer.bias.output .-= lr * ∇ / batch_len
-#             end
-#         end
-#     end
-#     return nothing
-# end
+    return (batch_loss / batch_size, batch_acc / batch_size) 
+end
