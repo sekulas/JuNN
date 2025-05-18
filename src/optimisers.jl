@@ -22,7 +22,7 @@ Arguments:
 - `β` (beta): Tuple of decay rates for moment estimates (β1, β2).
 - `ϵ` (epsilon): Small constant for numerical stability.
 """
-Adam(η::Float32 = 0.001f0, β::Tuple{Float32,Float32} = (0.9f0, 0.999f0), ϵ::Float32 = EPS) = Adam(η, β, ϵ, IdDict())
+Adam(η::Float32 = 0.01f0, β::Tuple{Float32,Float32} = (0.9f0, 0.999f0), ϵ::Float32 = EPS) = Adam(η, β, ϵ, IdDict())
 
 # Internal constructor if state is pre-populated (e.g. for deserialization)
 Adam(η::Float32, β::Tuple{Float32,Float32}, state::IdDict) = Adam(η, β, EPS, state)
