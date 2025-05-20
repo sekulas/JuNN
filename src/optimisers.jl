@@ -48,7 +48,7 @@ function apply!(o::Adam, param::Variable, Δ::AbstractArray)
     @. mt = β[1] * mt + (1 - β[1]) * Δ
   
     # Update biased second raw moment estimate
-    @. vt = β[2] * vt + (1 - β[2]) * Δ * conj(Δ)
+    @. vt = β[2] * vt + (1 - β[2]) * Δ * Δ
 
 
     @. Δ_step =  mt / (1 - βp[1]) / (√(vt / (1 - βp[2])) + o.epsilon) * η
