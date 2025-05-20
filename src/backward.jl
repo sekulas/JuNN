@@ -6,7 +6,7 @@ update!(node::GraphNode, ∇) =
         node.∇ .+= ∇
     end
 
-function backward!(order::Vector; seed=1.0)
+function backward!(order::Vector; seed=1.0f0)
     result = last(order)
     result.∇ = seed
     @assert length(result.output) == 1 "∇ is defined only for scalar functions"
