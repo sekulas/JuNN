@@ -57,8 +57,9 @@ end
 
 function Dense((in, out)::Pair{<:Integer, <:Integer}, activation::F=identity;
                init = glorot_uniform, 
-               bias::Bool = false, 
-               name="dense_$in=>$out") where {F}
+               bias::Bool = true, 
+               name=nothing) where {F}
+    name = isnothing(name) ? "dense_$in=>$out" : name
     Dense(Variable(init(out, in), name=name), bias, activation)
 end
 
