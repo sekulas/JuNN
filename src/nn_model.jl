@@ -74,7 +74,7 @@ function gradient!(grads, net, x_batch, y_batch, batch_size)
         accumulate_gradients!(grads, net.params)
     end
 
-    for i in 1:length(grads)
+    for i in eachindex(grads)
         grads[i] ./= batch_size
     end
     
