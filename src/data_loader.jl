@@ -31,7 +31,7 @@ end
 
 # returns data in d.indices[i+1:i+batchsize]
 @propagate_inbounds function Base.iterate(dl::DataLoader, i=0)     
-    i >= dl.num_batches && return nothing
+    i >= dl.num_obs && return nothing
     if dl.shuffle && i == 0
         shuffle!(dl.rng, dl.indicies_obs)
     end
