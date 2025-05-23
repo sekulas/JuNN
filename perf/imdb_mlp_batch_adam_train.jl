@@ -14,6 +14,13 @@ using Printf, Random
 Random.seed!(0)
 
 using JLD2
+
+#### DEBUGGING VERSION ####
+#X_train = load("./data/imdb_dataset_prepared_bool_labels.jld2", "X_train")
+#y_train = load("./data/imdb_dataset_prepared_bool_labels.jld2", "y_train")
+#X_test = load("./data/imdb_dataset_prepared_bool_labels.jld2", "X_test")
+#y_test = load("./data/imdb_dataset_prepared_bool_labels.jld2", "y_test")
+
 X_train = load("./data/imdb_dataset_prepared.jld2", "X_train")
 y_train = load("./data/imdb_dataset_prepared.jld2", "y_train")
 X_test = load("./data/imdb_dataset_prepared.jld2", "X_test")
@@ -27,7 +34,6 @@ X_train = Float32.(X_train)
 y_train = Float32.(y_train)
 X_test = Float32.(X_test)
 y_test = Float32.(y_test)
-
 
 batch_size = 64
 
@@ -56,4 +62,13 @@ for epoch in 1:epochs
             epoch, epochs, train_loss, train_acc, test_loss, test_acc, t)
 end
 
+# X_train: (17703, 8000)
+# y_train: (1, 8000)
+# X_test: (17703, 2000)
+# y_test: (1, 2000)
+# Epoch 1/5: Train Loss: 0.6406, Train Acc: 0.7986, Test Loss: 0.5710, Test Acc: 0.8389, Time: 31.46s
+# Epoch 2/5: Train Loss: 0.4496, Train Acc: 0.9146, Test Loss: 0.4339, Test Acc: 0.8608, Time: 20.95s
+# Epoch 3/5: Train Loss: 0.2909, Train Acc: 0.9433, Test Loss: 0.3627, Test Acc: 0.8647, Time: 24.42s
+# Epoch 4/5: Train Loss: 0.1984, Train Acc: 0.9643, Test Loss: 0.3311, Test Acc: 0.8721, Time: 24.70s
+# Epoch 5/5: Train Loss: 0.1416, Train Acc: 0.9774, Test Loss: 0.3186, Test Acc: 0.8726, Time: 22.26s
 
