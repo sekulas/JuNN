@@ -57,6 +57,8 @@ function gradient!(grads, net, x_batch, y_batch, batch_size)
     batch_loss = 0.0f0
     batch_acc = 0.0f0
 
+    batch_size = size(x_batch, 2)
+
     for i in 1:batch_size
         x_sample = x_batch[:, i:i]
         y_sample = y_batch[:, i:i]
@@ -107,6 +109,8 @@ end
 function test!(net, x_batch, y_batch, batch_size)
     batch_loss = 0.0f0
     batch_acc = 0.0f0
+
+    batch_size = size(x_batch, 2)
 
     for i in 1:batch_size
         x_sample = x_batch[:, i:i]
