@@ -43,7 +43,7 @@ mutable struct Dense{F}
     activation::F
 
     function Dense(weights::Variable, 
-                   bias::Bool = false, 
+                   bias::Bool = true, 
                    activation::F = identity) where {F}
         b = create_bias(weights, bias)
         new{F}(weights, b, activation)
