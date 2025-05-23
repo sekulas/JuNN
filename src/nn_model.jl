@@ -60,8 +60,8 @@ function gradient!(grads, net, x_batch, y_batch, batch_size)
     batch_size = size(x_batch, 2)
 
     for i in 1:batch_size
-        x_sample = x_batch[:, i:i]
-        y_sample = y_batch[:, i:i]
+        x_sample = @view x_batch[:, i:i]
+        y_sample = @view y_batch[:, i:i]
         
         net.x_node.output .= x_sample
         net.y_node.output .= y_sample
@@ -74,8 +74,9 @@ function gradient!(grads, net, x_batch, y_batch, batch_size)
         accumulate_gradients!(grads, net.params)
     end
 
-    for i in eachindex(grads)
-        grads[i] ./= batch_size
+    inv_batch_size = 1.0f0 / batch_size
+    for grad in grads
+        grad .*= inv_batch_size
     end
     
     return (batch_loss / batch_size, batch_acc / batch_size) 
