@@ -9,7 +9,6 @@ compute!(node::Operator) =
 
 function forward!(order::Vector)
     for node in order
-        #println("forward!:",node) #TO_REM
         compute!(node)
         reset!(node)
     end
