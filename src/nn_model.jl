@@ -36,7 +36,7 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
     total_loss = 0.0f0
     total_acc = 0.0f0
     iterations = 0
-    grads = [zeros(size(p.output)) for p in net.params]
+    grads = [zeros(Float32, size(p.output)) for p in net.params]
 
     for (x_batch, y_batch) in dataset
         loss, acc = 
