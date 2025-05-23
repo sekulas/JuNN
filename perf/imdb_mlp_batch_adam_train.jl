@@ -29,7 +29,7 @@ X_test = Float32.(X_test)
 y_test = Float32.(y_test)
 
 
-batch_size = 32
+batch_size = 64
 
 dataset = DataLoader((X_train, y_train), batchsize=batch_size, shuffle=true)
 testset = DataLoader((X_test, y_test), batchsize=batch_size, shuffle=false)
@@ -45,7 +45,7 @@ accuracy(y_true, y_pred) = mean((y_true .> 0.5) .== (y_pred .> 0.5))
 
 net = NeuralNetwork(model, Adam(), binary_cross_entropy, accuracy)
 
-epochs = 60
+epochs = 5
 for epoch in 1:epochs
     t = @elapsed begin
         train_loss, train_acc = train!(net, dataset)
