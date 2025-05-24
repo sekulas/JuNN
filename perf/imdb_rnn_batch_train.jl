@@ -16,20 +16,20 @@ Random.seed!(0)
 
 using JLD2
 
-X_train = load("./data_rnn/imdb_dataset_prepared.jld2", "X_train")
-y_train = load("./data_rnn/imdb_dataset_prepared.jld2", "y_train")
-X_test = load("./data_rnn/imdb_dataset_prepared.jld2", "X_test")
-y_test = load("./data_rnn/imdb_dataset_prepared.jld2", "y_test")
-embeddings = load("./data_rnn/imdb_dataset_prepared.jld2", "embeddings")
-vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
-
-#### DEBUGGING VERSION ####
-# X_train = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "X_train")
-# y_train = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "y_train")
-# X_test = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "X_test")
-# y_test = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "y_test")
+# X_train = load("./data_rnn/imdb_dataset_prepared.jld2", "X_train")
+# y_train = load("./data_rnn/imdb_dataset_prepared.jld2", "y_train")
+# X_test = load("./data_rnn/imdb_dataset_prepared.jld2", "X_test")
+# y_test = load("./data_rnn/imdb_dataset_prepared.jld2", "y_test")
 # embeddings = load("./data_rnn/imdb_dataset_prepared.jld2", "embeddings")
 # vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
+
+#### DEBUGGING VERSION ####
+X_train = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "X_train")[:,1:10]
+y_train = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "y_train")[:,1:10]
+X_test = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "X_test")[:,1:10]
+y_test = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "y_test")[:,1:10]
+embeddings = load("./data_rnn/imdb_dataset_prepared.jld2", "embeddings")
+vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
 
 println("X_train: ", size(X_train))
 println("y_train: ", size(y_train))
@@ -38,31 +38,26 @@ println("y_test: ", size(y_test))
 println("embeddings: ", size(embeddings))
 println("vocab: ", size(vocab))
 
+vocab_size = length(vocab)
+embed_dim = size(embeddings, 1)  # 50 from your comment
+sequence_length = size(X_train, 1)  # 130 from your comment
+batch_size = 1
 
-embedding_dim = size(embeddings, 1)  # 50
-vocab_size = length(vocab)           # 12849
-seq_length = size(X_train, 1)        # 130
-
-
-batch_size = 64
-
+model = Chain(
+    Embedding(vocab_size, embed_dim, name="embedding"),
+    RNN(embed_dim, 16, return_sequences=false, name="rnn_layer"),
+    Dense((16 => 1), σ, name="output_layer")
+)
+    
+model.layers[1].weights.output .= embeddings
 dataset = DataLoader((X_train, y_train), batchsize=batch_size, shuffle=true)
+testset = DataLoader((X_test, y_test), batchsize=batch_size, shuffle=false)
 
 accuracy(y_true, y_pred) = mean((y_true .> 0.5) .== (y_pred .> 0.5))
 
-model = Chain(
-    Embedding(vocab_size, embedding_dim),           # Embedding layer
-    RNN((embedding_dim => 16), ReLU; return_state=true), # RNN layer with 16 hidden units, ReLU activation
-    get_last,                                    # Extract the last element (equivalent to x -> x[end])
-    flatten,                                        # Flatten output
-    Dense((16 => 1), σ)                               # Output layer with sigmoid activation
-)
+net = NeuralNetwork(model, RMSProp(), binary_cross_entropy, accuracy; seq_length=sequence_length)
 
-model.layers[1].weights.output .= embeddings;
-
-net = NeuralNetwork(model, RMSProp(), binary_cross_entropy, accuracy)
-
-epochs = 5
+epochs = 1
 for epoch in 1:epochs
     t = @elapsed begin
         train_loss, train_acc = train!(net, dataset)

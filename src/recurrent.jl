@@ -1,0 +1,164 @@
+mutable struct Embedding
+    weights::Variable
+    
+    function Embedding(vocab_size::Int, embed_dim::Int; 
+                      init=glorot_uniform, 
+                      name=nothing)
+        name = isnothing(name) ? "embedding_$(vocab_size)x$(embed_dim)" : name
+        weights = Variable(init(embed_dim, vocab_size), name=name)
+        new(weights)
+    end
+end
+
+function (l::Embedding)(indices::GraphNode)
+    return TODO(selected_cols, name="embedding_output")
+end
+
+# RNN Cell - implements the core RNN computation
+mutable struct RNNCell
+    W_ih::Variable  # Input to hidden weights
+    W_hh::Variable  # Hidden to hidden weights  
+    bias::Union{Nothing, Variable}
+    activation::Function
+    
+    function RNNCell(input_size::Int, hidden_size::Int;
+                    bias::Bool = true,
+                    activation = tanh,
+                    init = glorot_uniform,
+                    name = nothing)
+        
+        name_prefix = isnothing(name) ? "rnn_cell" : name
+        
+        W_ih = Variable(init(hidden_size, input_size), name="$(name_prefix)_W_ih")
+        W_hh = Variable(init(hidden_size, hidden_size), name="$(name_prefix)_W_hh")
+        
+        b = bias ? Variable(zeros(Float32, hidden_size, 1), name="$(name_prefix)_bias") : nothing
+        
+        new(W_ih, W_hh, b, activation)
+    end
+end
+
+function (cell::RNNCell)(input::GraphNode, hidden::GraphNode)
+    # RNN cell computation: h_t = tanh(W_ih * x_t + W_hh * h_{t-1} + b)
+    ih = cell.W_ih * input
+    hh = cell.W_hh * hidden
+    
+    combined = ih .+ hh
+    
+    if cell.bias !== nothing
+        combined = combined .+ cell.bias
+    end
+    
+    return cell.activation(combined)
+end
+
+# RNN Layer - processes sequences
+mutable struct RNN
+    cell::RNNCell
+    hidden_size::Int
+    return_sequences::Bool
+    
+    function RNN(input_size::Int, hidden_size::Int;
+                bias::Bool = true,
+                activation = tanh,
+                return_sequences::Bool = false,
+                init = glorot_uniform,
+                name = nothing)
+        
+        cell = RNNCell(input_size, hidden_size; 
+                      bias=bias, activation=activation, init=init, name=name)
+        new(cell, hidden_size, return_sequences)
+    end
+end
+
+function (rnn::RNN)(x::GraphNode, initial_hidden::Union{GraphNode, Nothing} = nothing)
+    # x should be of shape (input_size, seq_length, batch_size) or (input_size, seq_length) for single batch
+    #println("RNN forward with input shape: ", x)
+    input_dims = size(x.output)
+    
+    if length(input_dims) == 2
+        input_size, seq_length = input_dims
+        batch_size = 1
+    else
+        input_size, seq_length, batch_size = input_dims
+    end
+    
+    # Initialize hidden state
+    if initial_hidden === nothing
+        hidden = Variable(zeros(Float32, rnn.hidden_size, batch_size), name="h0")
+    else
+        hidden = initial_hidden
+    end
+    
+    outputs = []
+    
+    # Process sequence step by step
+    for t in 1:seq_length
+        if length(input_dims) == 2
+            x_t = Variable(x.output[:, t:t], name="x_$t")
+        else
+            x_t = Variable(x.output[:, t, :], name="x_$t")
+        end
+        
+        hidden = rnn.cell(x_t, hidden)
+        
+        if rnn.return_sequences
+            push!(outputs, hidden)
+        end
+    end
+    
+    if rnn.return_sequences
+        # Concatenate all outputs
+        # This is simplified - you'd want a proper concatenation operator
+        return outputs[end]  # For now, return last output
+    else
+        return hidden
+    end
+end
+
+# Reset function for RNN (needed for training)
+function reset!(rnn::RNN)
+    # In stateful RNNs, you might want to reset hidden states
+    # For now, this is a placeholder since we create new hidden states each forward pass
+    nothing
+end
+
+# Updated Chain to handle RNN reset
+function reset!(model::Chain)
+    for layer in model.layers
+        if isa(layer, RNN)
+            reset!(layer)
+        end
+    end
+end
+
+# Indexing operator for embedding lookup (you'll need to implement this)
+struct IndexOperator <: Operator
+    indices::GraphNode
+    input::GraphNode
+    output::Any
+    ∇::Any
+    name::String
+    
+    IndexOperator(input::GraphNode, indices::GraphNode; name="index") = 
+        new(indices, input, nothing, nothing, name)
+end
+
+function forward(op::IndexOperator, weights)
+    # Select columns from weight matrix based on indices
+    selected_cols = weights.output[:, op.indices.output]
+
+end
+
+function backward(op::IndexOperator, weights, ∇)
+    # Create gradient matrix with same size as weights, filled with zeros
+    grad = zeros(Float32, size(weights))
+    # Add gradients to the selected columns
+    for (i, idx) in enumerate(op.indices)
+        grad[:, idx] .+= ∇[:, i]
+    end
+    return (grad,)
+end
+
+# Helper function to create index operation
+index_select(weights::GraphNode, indices::Vector{Int}) = IndexOperator(weights, indices)

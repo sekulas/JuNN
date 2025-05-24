@@ -15,11 +15,22 @@ struct NeuralNetwork
     params::Vector{Variable}
 end
 
-function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::Function)
+function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::Function; seq_length::Int=nothing)
     input_size = size(model.layers[1].weights.output, 2)
     output_size = size(model.layers[end].weights.output, 1)
-    
-    x_node = Variable(zeros(Float32, input_size, 1), name="x_input")
+
+    if model.layers[1] isa Embedding
+        if seq_length !== nothing
+            input_size = seq_length
+            x_node = Variable(ones(Int32, input_size, 1), name="x_input")
+        else
+            println("Warning: seq_length is not provided, using input_size from the embedding layer.")
+            println("Solution may not work as expected if seq_length is not set.")
+        end
+    else 
+        x_node = Variable(zeros(Float32, input_size, 1), name="x_input")
+    end
+
     y_node = Variable(zeros(Float32, output_size, 1), name="y_true")
     
     y_pred_node = model(x_node)
@@ -60,6 +71,9 @@ function gradient!(grads, net, x_batch, y_batch, batch_size)
     batch_size = size(x_batch, 2)
 
     for i in 1:batch_size
+        # TODO NOT NECESSARY ? Reset RNN states before processing each batch
+        reset!(net.model)
+
         x_sample = @view x_batch[:, i:i]
         y_sample = @view y_batch[:, i:i]
         
@@ -83,7 +97,15 @@ function gradient!(grads, net, x_batch, y_batch, batch_size)
 end
 
 function accumulate_gradients!(grad_accumulator::Vector, params::Vector)
+
+    println("Accumulating gradients...")
+
     for (i, param) in enumerate(params)
+        println("!!! i:", i, "param ∇: ", param.∇)
+    end
+
+    for (i, param) in enumerate(params)
+        println("acc i = ", i, " param name = ", param.name)
         grad_accumulator[i] .+= param.∇
     end
 end
@@ -112,6 +134,9 @@ function test!(net, x_batch, y_batch, batch_size)
     batch_acc = 0.0f0
 
     batch_size = size(x_batch, 2)
+
+    # TODO NOT NECESSARY?
+    reset!(net.model)
 
     for i in 1:batch_size
         x_sample = x_batch[:, i:i]

@@ -50,7 +50,7 @@ forward(::BroadcastedOperator{typeof(mean)}, x) =
     mean(x)
 backward(::BroadcastedOperator{typeof(mean)}, x, ∇) =
     let n = length(x)
-        δ = fill(∇ / n, n)
+        δ = fill(∇ / n, size(x))
     in
         tuple(δ)
     end
