@@ -16,20 +16,34 @@ Random.seed!(0)
 
 using JLD2
 
-# X_train = load("./data_rnn/imdb_dataset_prepared.jld2", "X_train")
-# y_train = load("./data_rnn/imdb_dataset_prepared.jld2", "y_train")
-# X_test = load("./data_rnn/imdb_dataset_prepared.jld2", "X_test")
-# y_test = load("./data_rnn/imdb_dataset_prepared.jld2", "y_test")
+X_train = load("./data_rnn/imdb_dataset_prepared.jld2", "X_train")
+y_train = load("./data_rnn/imdb_dataset_prepared.jld2", "y_train")
+X_test = load("./data_rnn/imdb_dataset_prepared.jld2", "X_test")
+y_test = load("./data_rnn/imdb_dataset_prepared.jld2", "y_test")
+embeddings = load("./data_rnn/imdb_dataset_prepared.jld2", "embeddings")
+vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
+
+#### DEBUGGING VERSION ####
+# X_train = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "X_train")[:,1:10]
+# y_train = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "y_train")[:,1:10]
+# X_test = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "X_test")[:,1:10]
+# y_test = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "y_test")[:,1:10]
 # embeddings = load("./data_rnn/imdb_dataset_prepared.jld2", "embeddings")
 # vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
 
-#### DEBUGGING VERSION ####
-X_train = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "X_train")[:,1:10]
-y_train = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "y_train")[:,1:10]
-X_test = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "X_test")[:,1:10]
-y_test = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "y_test")[:,1:10]
-embeddings = load("./data_rnn/imdb_dataset_prepared.jld2", "embeddings")
-vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
+# sequence_length = 3
+# num_train = 3
+# num_test = 3
+# embed_dim = 5
+# vocab_size = 7
+
+# X_train = rand(1:vocab_size, sequence_length, num_train)
+# y_train = rand(Bool, 1, num_train)
+# X_test = rand(1:vocab_size, sequence_length, num_test)
+# y_test = rand(Bool, 1, num_test)
+# embeddings = randn(embed_dim, vocab_size)
+# vocab = [string("word", i) for i in 1:vocab_size]
+
 
 println("X_train: ", size(X_train))
 println("y_train: ", size(y_train))
@@ -41,7 +55,7 @@ println("vocab: ", size(vocab))
 vocab_size = length(vocab)
 embed_dim = size(embeddings, 1)  # 50 from your comment
 sequence_length = size(X_train, 1)  # 130 from your comment
-batch_size = 1
+batch_size = 128
 
 model = Chain(
     Embedding(vocab_size, embed_dim, name="embedding"),
@@ -57,7 +71,7 @@ accuracy(y_true, y_pred) = mean((y_true .> 0.5) .== (y_pred .> 0.5))
 
 net = NeuralNetwork(model, RMSProp(), binary_cross_entropy, accuracy; seq_length=sequence_length)
 
-epochs = 1
+epochs = 12
 for epoch in 1:epochs
     t = @elapsed begin
         train_loss, train_acc = train!(net, dataset)

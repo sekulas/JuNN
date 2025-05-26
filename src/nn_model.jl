@@ -97,15 +97,7 @@ function gradient!(grads, net, x_batch, y_batch, batch_size)
 end
 
 function accumulate_gradients!(grad_accumulator::Vector, params::Vector)
-
-    println("Accumulating gradients...")
-
     for (i, param) in enumerate(params)
-        println("!!! i:", i, "param ∇: ", param.∇)
-    end
-
-    for (i, param) in enumerate(params)
-        println("acc i = ", i, " param name = ", param.name)
         grad_accumulator[i] .+= param.∇
     end
 end
