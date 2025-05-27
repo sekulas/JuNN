@@ -65,6 +65,15 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
     return (total_loss / iterations, total_acc / iterations)
 end
 
+function clip_gradients!(grads::Vector, max_norm::Float32)
+    for grad in grads
+        norm = sqrt(sum(grad .^ 2))
+        if norm > max_norm
+            grad .*= (max_norm / norm)
+        end
+    end
+end
+
 function clear!(grads::Vector)
     for i in eachindex(grads)
         grads[i] .= 0.0f0
