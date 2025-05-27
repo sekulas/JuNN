@@ -16,12 +16,12 @@ Random.seed!(0)
 
 using JLD2
 
-X_train = load("./data_rnn/imdb_dataset_prepared.jld2", "X_train")
-y_train = load("./data_rnn/imdb_dataset_prepared.jld2", "y_train")
-X_test = load("./data_rnn/imdb_dataset_prepared.jld2", "X_test")
-y_test = load("./data_rnn/imdb_dataset_prepared.jld2", "y_test")
-embeddings = load("./data_rnn/imdb_dataset_prepared.jld2", "embeddings")
-vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
+# X_train = load("./data_rnn/imdb_dataset_prepared.jld2", "X_train")
+# y_train = load("./data_rnn/imdb_dataset_prepared.jld2", "y_train")
+# X_test = load("./data_rnn/imdb_dataset_prepared.jld2", "X_test")
+# y_test = load("./data_rnn/imdb_dataset_prepared.jld2", "y_test")
+# embeddings = load("./data_rnn/imdb_dataset_prepared.jld2", "embeddings")
+# vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
 
 #### DEBUGGING VERSION ####
 # X_train = load("./data_rnn/imdb_dataset_prepared_bool_labels.jld2", "X_train")[:,1:10]
@@ -31,18 +31,18 @@ vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
 # embeddings = load("./data_rnn/imdb_dataset_prepared.jld2", "embeddings")
 # vocab = load("./data_rnn/imdb_dataset_prepared.jld2", "vocab")
 
-# sequence_length = 3
-# num_train = 3
-# num_test = 3
-# embed_dim = 5
-# vocab_size = 7
+sequence_length = 3
+num_train = 3
+num_test = 3
+embed_dim = 5
+vocab_size = 7
 
-# X_train = rand(1:vocab_size, sequence_length, num_train)
-# y_train = rand(Bool, 1, num_train)
-# X_test = rand(1:vocab_size, sequence_length, num_test)
-# y_test = rand(Bool, 1, num_test)
-# embeddings = randn(embed_dim, vocab_size)
-# vocab = [string("word", i) for i in 1:vocab_size]
+X_train = rand(1:vocab_size, sequence_length, num_train)
+y_train = rand(Bool, 1, num_train)
+X_test = rand(1:vocab_size, sequence_length, num_test)
+y_test = rand(Bool, 1, num_test)
+embeddings = randn(embed_dim, vocab_size)
+vocab = [string("word", i) for i in 1:vocab_size]
 
 
 println("X_train: ", size(X_train))

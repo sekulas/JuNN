@@ -351,28 +351,28 @@ function forward(op::IndexOperator, W::Variable, idxs::GraphNode)
     # W.output is the embedding weight matrix (embed_dim × vocab_size)
     # idxs.output contains integer indices (seq_length,) or (seq_length, batch_size)
     
-    indices = idxs.output
-    weights = W.output
+    # indices = idxs.output
+    # weights = W.output
     
-    if ndims(indices) == 1
+    # if ndims(indices) == 1
         # Single sequence: indices is (seq_length,)
-        result = weights[:, indices]  # Result: (embed_dim, seq_length)
-    else
-        # Batch of sequences: indices is (seq_length, batch_size)
-        seq_len, batch_size = size(indices)
-        embed_dim = size(weights, 1)
+    result = @view W.output[:, idxs.output]  # Result: (embed_dim, seq_length)
+    # else
+    #     # Batch of sequences: indices is (seq_length, batch_size)
+    #     seq_len, batch_size = size(indices)
+    #     embed_dim = size(weights, 1)
         
-        # Initialize output tensor
-        result = zeros(Float32, embed_dim, seq_len, batch_size)
+    #     # Initialize output tensor
+    #     result = zeros(Float32, embed_dim, seq_len, batch_size)
         
-        # Fill embeddings for each sequence in the batch
-        for b in 1:batch_size
-            for t in 1:seq_len
-                idx = indices[t, b]
-                result[:, t, b] .= weights[:, idx]
-            end
-        end
-    end
+    #     # Fill embeddings for each sequence in the batch
+    #     for b in 1:batch_size
+    #         for t in 1:seq_len
+    #             idx = indices[t, b]
+    #             result[:, t, b] .= weights[:, idx]
+    #         end
+    #     end
+    # end
     
     return result
 end
