@@ -54,6 +54,7 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
             gradient!(grads, net, x_batch, y_batch, batch_size)
 
         optimize!(net.optimizer, net.params, grads)
+        clear!(grads)
         
         total_loss += loss
         total_acc += acc
@@ -62,6 +63,12 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
     end
 
     return (total_loss / iterations, total_acc / iterations)
+end
+
+function clear!(grads::Vector)
+    for i in eachindex(grads)
+        grads[i] .= 0.0f0
+    end
 end
 
 function gradient!(grads, net, x_batch, y_batch, batch_size)
