@@ -79,5 +79,5 @@ function apply!(opt::RMSProp, param::Variable, grad::Array{Float32})
     opt.state[param] .= opt.ρ .* opt.state[param] .+ (1.0f0 - opt.ρ) .* grad.^2
     
     # Update parameters
-    param.output .-= opt.η .* grad ./ (sqrt.(opt.state[param] .+ opt.ϵ))
+    param.output .-= opt.η .* grad ./ (sqrt.(opt.state[param]) .+ opt.ϵ)
 end
