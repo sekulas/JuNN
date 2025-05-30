@@ -249,28 +249,10 @@ function backward(op::IndexOperator, W, idxs, ∇_output::AbstractArray)
     #     end
     # end
     
-    if ndims(indices) == 1
-        # Single sequence case
-        seq_len = length(indices)
-        for t in 1:seq_len
-            idx = indices[t]
-            # Accumulate gradient for this embedding vector
-            ∇_W[:, idx] .+= ∇_output[:, t]
-        end
-    else
-        # Batch case
-        seq_len, batch_size = size(indices)
-        for b in 1:batch_size
-            for t in 1:seq_len
-                idx = indices[t, b]
-                # Accumulate gradient for this embedding vector
-                ∇_W[:, idx] .+= ∇_output[:, t, b]
-            end
-        end
-    end
-    
-    # Return gradients: (gradient w.r.t. weights, gradient w.r.t. indices)
-    # No gradient w.r.t. indices (they're discrete)
-    return (∇_W, nothing)
+    # # Return gradients: (gradient w.r.t. weights, gradient w.r.t. indices)
+    # # No gradient w.r.t. indices (they're discrete)
+    # return (∇_W, nothing)
+
+    (nothing, nothing)
 end
 
