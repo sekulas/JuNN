@@ -1,5 +1,9 @@
 import Base: *
 import LinearAlgebra: mul!, transpose!
+
+```
+BroadcastedOperators for basic operations
+```
 # x * y (aka matrix multiplication)
 *(A::GraphNode, x::GraphNode) = BroadcastedOperator(mul!, A, x)
 forward(::BroadcastedOperator{typeof(mul!)}, A, x) = A * x
@@ -107,20 +111,6 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, ∇) =
     #     in ( ∇ .* mx, ∇ .* .!mx )
 
 
-sigmoid(x::GraphNode) = BroadcastedOperator(σ, x)
-σ(x::GraphNode) = BroadcastedOperator(σ, x)
-forward(::BroadcastedOperator{typeof(σ)}, x) = 1.0f0 ./ (1.0f0 .+ exp.(-x))
-backward(node::BroadcastedOperator{typeof(σ)}, x, ∇) = 
-    # let
-    #     y = node.output
-    #     𝟏 = ones(length(y))
-    #     J = diagm(y .* (1.0 .- y))
-    #     tuple(J' * ∇)
-    # end
-    let 
-        y = node.output
-        tuple(∇ .* (y .* (1.0f0 .- y)))
-    end
 
 Base.Broadcast.broadcasted(^, x::GraphNode, y::GraphNode) = 
     BroadcastedOperator(^, x, y)
@@ -157,6 +147,14 @@ backward(::BroadcastedOperator{typeof(log)}, x, ∇) =
     ( ∇ ./ x, )
 
 
+```
+BroadcastedOperators for activation functions
+```
+Base.Broadcast.broadcasted(identity, x::GraphNode) = BroadcastedOperator(identity, x)
+forward(::BroadcastedOperator{typeof(identity)}, x) = x
+backward(::BroadcastedOperator{typeof(identity)}, x, ∇) = 
+    tuple(∇)
+
 softmax(x::GraphNode) = BroadcastedOperator(softmax, x)
 forward(::BroadcastedOperator{typeof(softmax)}, x) =
     let 
@@ -177,11 +175,21 @@ backward(node::BroadcastedOperator{typeof(softmax)}, x, ∇) =
         tuple(y .* (∇ .- ω))
     end
 
-Base.Broadcast.broadcasted(identity, x::GraphNode) = BroadcastedOperator(identity, x)
-forward(::BroadcastedOperator{typeof(identity)}, x) = x
-backward(::BroadcastedOperator{typeof(identity)}, x, ∇) = 
-    tuple(∇)
 
+sigmoid(x::GraphNode) = BroadcastedOperator(σ, x)
+σ(x::GraphNode) = BroadcastedOperator(σ, x)
+forward(::BroadcastedOperator{typeof(σ)}, x) = 1.0f0 ./ (1.0f0 .+ exp.(-x))
+backward(node::BroadcastedOperator{typeof(σ)}, x, ∇) = 
+    # let
+    #     y = node.output
+    #     𝟏 = ones(length(y))
+    #     J = diagm(y .* (1.0 .- y))
+    #     tuple(J' * ∇)
+    # end
+    let 
+        y = node.output
+        tuple(∇ .* (y .* (1.0f0 .- y)))
+    end
 
 import Base: tanh
 tanh(x::GraphNode) = BroadcastedOperator(tanh, x)
@@ -199,4 +207,16 @@ backward(node::BroadcastedOperator{typeof(ReLU)}, x, ∇) =
         y    = node.output
         mask = y .> 0.0f0
         tuple(mask .* ∇)            
+    end
+
+```
+BroadcastedOperators for column extraction 
+```
+getindex_col(x::GraphNode, t::GraphNode) = BroadcastedOperator(getindex_col, x, t)
+forward(::BroadcastedOperator{typeof(getindex_col)}, x::Array{Float32}, t::Int64) = @view x[:, t:t]
+backward(::BroadcastedOperator{typeof(getindex_col)}, x::Matrix{Float32}, t::Int64, ∇::Matrix{Float32}) = 
+    let
+        grad_x = zeros(eltype(∇), size(x))
+        grad_x[:, t:t] .= ∇
+        (grad_x, nothing)
     end
