@@ -1,9 +1,30 @@
 import Base: *
-import LinearAlgebra: mul!
+import LinearAlgebra: mul!, transpose!
 # x * y (aka matrix multiplication)
 *(A::GraphNode, x::GraphNode) = BroadcastedOperator(mul!, A, x)
 forward(::BroadcastedOperator{typeof(mul!)}, A, x) = A * x
-backward(::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = tuple(∇ * x', A' * ∇)
+backward(node::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = let 
+    if isnothing(node.buffers)
+        A_size = size(A)
+        x_size = size(x)
+        
+        node.buffers = (
+            dA = zeros(eltype(A), A_size...),
+            dx = zeros(eltype(x), x_size...),
+            temp_x_t = zeros(eltype(x), reverse(x_size)...)
+        )
+    end
+
+    dA_buf = node.buffers.dA
+    dx_buf = node.buffers.dx
+    temp_x_t = node.buffers.temp_x_t
+
+    transpose!(temp_x_t, x)
+    mul!(dA_buf, ∇, temp_x_t) #∇ * x'
+    mul!(dx_buf, A', ∇) #A' * ∇
+
+    return (dA_buf, dx_buf)
+end 
 
 
 import LinearAlgebra: diagm

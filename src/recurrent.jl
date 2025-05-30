@@ -196,7 +196,7 @@ mutable struct RNNCell
     
     function RNNCell(input_size::Int, hidden_size::Int;
                     bias::Bool = true,
-                    activation = tanh,
+                    activation = ReLU,
                     init = glorot_uniform,
                     name = nothing)
         
@@ -233,7 +233,7 @@ mutable struct RNN
     
     function RNN(input_size::Int, hidden_size::Int;
                 bias::Bool = true,
-                activation = tanh,
+                activation = ReLU,
                 return_sequences::Bool = false,
                 init = glorot_uniform,
                 name = nothing)
