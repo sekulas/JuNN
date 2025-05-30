@@ -53,6 +53,8 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
         loss, acc = 
             gradient!(grads, net, x_batch, y_batch, batch_size)
 
+        clip_gradients!(grads, 1.0f0)
+
         optimize!(net.optimizer, net.params, grads)
         clear!(grads)
         
