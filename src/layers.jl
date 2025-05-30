@@ -41,9 +41,9 @@ function get_params(model::Chain)
                 println("Adding RNN layer bias: ", i)
                 push!(params, layer.cell.bias)
             end
-        elseif isa(layer, Embedding)
-            println("Adding Embedding layer parameters: ", i)
-            push!(params, layer.weights)
+        # elseif isa(layer, Embedding)
+        #     println("Adding Embedding layer parameters: ", i)
+        #     push!(params, layer.weights)
         end
         i += 1
     end
