@@ -15,7 +15,7 @@ struct NeuralNetwork
     params::Vector{Variable}
 end
 
-function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::Function; seq_length::Union{Int, Nothing}=nothing)
+function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::Function, batch_size::Int64; seq_length::Union{Int, Nothing}=nothing)
     input_size = size(model.layers[1].weights.output, 2)
     output_size = size(model.layers[end].weights.output, 1)
 
@@ -33,8 +33,8 @@ function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::F
         init_value = ones
     end
     
-    x_node = Variable(init_value(data_type, input_size, 1), name="x_input")
-    y_node = Variable(zeros(Float32, output_size, 1), name="y_true")
+    x_node = Variable(init_value(data_type, input_size, batch_size), name="x_input")
+    y_node = Variable(zeros(Float32, output_size, batch_size), name="y_true")
     
     y_pred_node = model(x_node)
     loss_node = loss(y_node, y_pred_node)

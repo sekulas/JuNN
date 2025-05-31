@@ -11,9 +11,13 @@ struct DataLoader{D,R<:AbstractRNG}
     num_batches::Int
     shuffle::Bool
     rng::R
+    partial::Bool
 end
 
-function DataLoader(data; batchsize=1, shuffle=false, rng=GLOBAL_RNG)
+function DataLoader(data; batchsize=1, shuffle=false, rng=GLOBAL_RNG, partial=false)
+    if partial
+        @warn "TODO: last mini batch"
+    end 
     batchsize > 0 || throw(ArgumentError("batchsize has to be at least 1"))
 
     num_obs = _get_num_obs(data)
@@ -22,16 +26,22 @@ function DataLoader(data; batchsize=1, shuffle=false, rng=GLOBAL_RNG)
         batchsize = num_obs
     end
 
-    num_batches = ceil(Int, num_obs / batchsize)
+    num_batches = partial ? ceil(Int, num_obs / batchsize) : floor(Int, num_obs / batchsize)
     
     indicies_obs = collect(1:num_obs)
     
-    DataLoader(data, num_obs, indicies_obs, batchsize, num_batches, shuffle, rng)
+    DataLoader(data, num_obs, indicies_obs, batchsize, num_batches, shuffle, rng, partial)
 end
 
 # returns data in d.indices[i+1:i+batchsize]
-@propagate_inbounds function Base.iterate(dl::DataLoader, i=0)     
-    i >= dl.num_obs && return nothing
+@propagate_inbounds function Base.iterate(dl::DataLoader, i=0) 
+    if dl.partial
+        i >= dl.num_obs && return nothing
+    else
+        i >= dl.num_batches * dl.batchsize && return nothing
+    end
+
+    # i >= dl.num_obs && return nothing
     if dl.shuffle && i == 0
         shuffle!(dl.rng, dl.indicies_obs)
     end

@@ -69,7 +69,7 @@ testset = DataLoader((X_test, y_test), batchsize=batch_size, shuffle=false)
 
 accuracy(y_true, y_pred) = mean((y_true .> 0.5) .== (y_pred .> 0.5))
 
-net = NeuralNetwork(model, RMSProp(), binary_cross_entropy, accuracy; seq_length=sequence_length)
+net = NeuralNetwork(model, RMSProp(), binary_cross_entropy, accuracy, batch_size, seq_length=sequence_length)
 
 epochs = 12
 for epoch in 1:epochs
@@ -80,6 +80,8 @@ for epoch in 1:epochs
     test_loss, test_acc = evaluate(net, testset)
     @printf("Epoch %d/%d: Train Loss: %.4f, Train Acc: %.4f, Test Loss: %.4f, Test Acc: %.4f, Time: %.2fs\n",
             epoch, epochs, train_loss, train_acc, test_loss, test_acc, t)
+    # @printf("Epoch %d/%d: Train Loss: %.4f, Train Acc: %.4f, Test Loss: %.4f, Test Acc: %.4f\n",
+        # epoch, epochs, train_loss, train_acc, test_loss, test_acc)
 end
 
 

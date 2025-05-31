@@ -7,19 +7,7 @@ BroadcastedOperators for basic operations
 # x * y (aka matrix multiplication)
 *(A::GraphNode, x::GraphNode) = BroadcastedOperator(mul!, A, x)
 forward(::BroadcastedOperator{typeof(mul!)}, A, x) = A * x
-backward(::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = let 
-    # A: (out×in), x: (in×k), ∇: (out×m)
-    # If x has 1 column but ∇ has m>1 columns, treat x as "broadcast"
-    if size(x, 2) == 1 && size(∇, 2) > 1
-        # sum ∇ over its columns first, then multiply by x'
-        dA = sum(∇, dims=2) * x'      # (out×1)*(1×in) = (out×in)
-    else
-        # normal batched or single‐col case
-        dA = ∇ * x'                  # (out×batch)*(batch×in) => (out×in)
-    end
-
-    dX = A' * ∇                      # always (in×out)*(out×batch) => (in×batch)
-    return (dA, dX)end
+backward(::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = ( ∇ * x', A' * ∇)
 
 import LinearAlgebra: diagm
 # x .* y (element-wise multiplication)
