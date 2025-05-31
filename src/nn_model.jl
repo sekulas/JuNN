@@ -15,22 +15,25 @@ struct NeuralNetwork
     params::Vector{Variable}
 end
 
-function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::Function; seq_length::Int=nothing)
+function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::Function; seq_length::Union{Int, Nothing}=nothing)
     input_size = size(model.layers[1].weights.output, 2)
     output_size = size(model.layers[end].weights.output, 1)
 
+    data_type = Float32
+    init_value = zeros
+    
     if model.layers[1] isa Embedding
         if seq_length !== nothing
             input_size = seq_length
-            x_node = Variable(ones(Int32, input_size, 1), name="x_input")
         else
             println("Warning: seq_length is not provided, using input_size from the embedding layer.")
             println("Solution may not work as expected if seq_length is not set.")
         end
-    else 
-        x_node = Variable(zeros(Float32, input_size, 1), name="x_input")
+        data_type = Int32
+        init_value = ones
     end
-
+    
+    x_node = Variable(init_value(data_type, input_size, 1), name="x_input")
     y_node = Variable(zeros(Float32, output_size, 1), name="y_true")
     
     y_pred_node = model(x_node)

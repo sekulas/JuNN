@@ -9,6 +9,7 @@ include("../src/nn_model.jl")
 include("../src/optimisers.jl")
 include("../src/losses.jl")
 include("../src/layers.jl")
+include("../src/recurrent.jl")
 
 using Printf, Random
 Random.seed!(0)
