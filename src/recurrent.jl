@@ -1,14 +1,3 @@
-const BATCH_SIZE = 1;
-
-# Updated Chain to handle RNN reset
-function reset!(model::Chain)
-    for layer in model.layers
-        if isa(layer, RNN)
-            reset!(layer)
-        end
-    end
-end
-
 mutable struct Embedding
     weights::Variable
     
@@ -29,10 +18,9 @@ function (l::Embedding)(indices::GraphNode)
     return op
 end
 
-# RNN Cell - implements the core RNN computation
 mutable struct RNNCell
-    W_ih::Variable  # Input to hidden weights
-    W_hh::Variable  # Hidden to hidden weights  
+    W_ih::Variable  
+    W_hh::Variable  
     bias::Union{Nothing, Variable}
     activation::Function
     
@@ -54,7 +42,6 @@ mutable struct RNNCell
 end
 
 function (cell::RNNCell)(input::GraphNode, hidden::GraphNode)
-    # RNN cell computation: h_t = tanh(W_ih * x_t + W_hh * h_{t-1} + b)
     ih = cell.W_ih * input
     hh = cell.W_hh * hidden
     
@@ -67,7 +54,6 @@ function (cell::RNNCell)(input::GraphNode, hidden::GraphNode)
     return cell.activation(combined)
 end
 
-# RNN Layer - processes sequences
 mutable struct RNN
     cell::RNNCell
     hidden_size::Int
@@ -87,12 +73,24 @@ mutable struct RNN
 end
 
 function (rnn::RNN)(x::GraphNode, initial_hidden::Union{GraphNode, Nothing} = nothing)
+    # x should be of shape (embed_dim, seq_length) after embedding
+    # Handle the case where x.output might be nothing during graph construction
+    if x.output === nothing
+        error("RNN input has not been computed. Make sure the embedding layer computes its output during construction.")
+    end
+    
     input_dims = size(x.output)
-    _, seq_length = input_dims
+    
+    if length(input_dims) == 2
+        input_size, seq_length = input_dims
+        batch_size = 1
+    else
+        input_size, seq_length, batch_size = input_dims
+    end
     
     # Initialize hidden state
     if initial_hidden === nothing
-        hidden = Variable(zeros(Float32, rnn.hidden_size, BATCH_SIZE), name="h0")
+        hidden = Variable(zeros(Float32, rnn.hidden_size, batch_size), name="h0")
     else
         hidden = initial_hidden
     end
@@ -101,12 +99,16 @@ function (rnn::RNN)(x::GraphNode, initial_hidden::Union{GraphNode, Nothing} = no
     
     # Process sequence step by step
     for t in 1:seq_length
-        # Extract the t-th column (timestep) from the embedded sequence
-        # x_t = BroadcastedOperator(getindex_col, x, Constant(t))
-        x_t = getindex_col(x, Constant(t))
-        # Compute the output immediately for graph construction
-        x_t.output = forward(x_t, x.output, t)
-
+        if length(input_dims) == 2
+            # x_t = BroadcastedOperator(getindex_col, x, Constant(t))
+            x_t = getindex_col(x, Constant(t))
+            # Compute the output immediately for graph construction
+            x_t.output = forward(x_t, x.output, t)
+        else
+            x_t = getindex_col_batch(x, Constant(t))
+            # Compute the output immediately for graph construction
+            x_t.output = forward(x_t, x.output, t)
+        end
         
         hidden = rnn.cell(x_t, hidden)
         
@@ -121,15 +123,8 @@ function (rnn::RNN)(x::GraphNode, initial_hidden::Union{GraphNode, Nothing} = no
         return hidden
     end
 end
-
-# Reset function for RNN
-function reset!(rnn::RNN)
-    nothing
-end
-
-# FIXED IndexOperator - This is the key fix for your gradient issue
 mutable struct IndexOperator <: Operator
-    inputs::Tuple{GraphNode, GraphNode}  # (weights, indices)
+    inputs::Tuple{GraphNode, GraphNode}
     output :: Any
     ∇      :: Any
     name   :: String
@@ -146,28 +141,70 @@ end
 
 # Forward pass: extract embeddings for given indices
 function forward(op::IndexOperator, W::Variable, idxs::GraphNode)
+    # W.output is the embedding weight matrix (embed_dim × vocab_size)
+    # idxs.output contains integer indices (seq_length,) or (seq_length, batch_size)
+    
     indices = idxs.output
     weights = W.output
-   
-    result = weights[:, @view(indices[:, 1])]
-   
+    
+    if ndims(indices) == 1
+        # Single sequence: indices is (seq_length,)
+        result = weights[:, indices]  # Result: (embed_dim, seq_length)
+    else
+        # Batch of sequences: indices is (seq_length, batch_size)
+        seq_len, batch_size = size(indices)
+        embed_dim = size(weights, 1)
+        
+        # Initialize output tensor
+        result = zeros(Float32, embed_dim, seq_len, batch_size)
+        
+        # Fill embeddings for each sequence in the batch
+        for b in 1:batch_size
+            for t in 1:seq_len
+                idx = indices[t, b]
+                result[:, t, b] .= weights[:, idx]
+            end
+        end
+    end
+    
     return result
 end
 
 # CRITICAL FIX: Proper backward pass for IndexOperator
 function backward(op::IndexOperator, W, idxs, ∇_output::AbstractArray)
+    # ∇_output has the same shape as op.output
+    # W.output is (embed_dim, vocab_size)
+    # We need to accumulate gradients back to the embedding weights
+    
+    indices = idxs
     embed_dim, vocab_size = size(W)
     
-    # TODO: NOT NECESSARY ALLOCATIONS
+    # Initialize gradient for weights (same size as W.output)
     ∇_W = zeros(Float32, embed_dim, vocab_size)
     
-    N = size(idxs, 1)
-    
-    for i in 1:N
-        idx = idxs[i, 1]
-        ∇_W[:, idx] .+= ∇_output[:, i]
+    if ndims(indices) == 1
+        # Single sequence case
+        seq_len = length(indices)
+        for t in 1:seq_len
+            idx = indices[t]
+            # Accumulate gradient for this embedding vector
+            ∇_W[:, idx] .+= ∇_output[:, t]
+        end
+    else
+        # Batch case
+        seq_len, batch_size = size(indices)
+        for b in 1:batch_size
+            for t in 1:seq_len
+                idx = indices[t, b]
+                # Accumulate gradient for this embedding vector
+                ∇_W[:, idx] .+= ∇_output[:, t, b]
+            end
+        end
     end
     
+    # Return gradients: (gradient w.r.t. weights, gradient w.r.t. indices)
+    # No gradient w.r.t. indices (they're discrete)
     return (∇_W, nothing)
 end
+
 

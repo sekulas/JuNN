@@ -7,29 +7,7 @@ BroadcastedOperators for basic operations
 # x * y (aka matrix multiplication)
 *(A::GraphNode, x::GraphNode) = BroadcastedOperator(mul!, A, x)
 forward(::BroadcastedOperator{typeof(mul!)}, A, x) = A * x
-backward(node::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = let 
-    if isnothing(node.buffers)
-        A_size = size(A)
-        x_size = size(x)
-        
-        node.buffers = (
-            dA = zeros(eltype(A), A_size...),
-            dx = zeros(eltype(x), x_size...),
-            temp_x_t = zeros(eltype(x), reverse(x_size)...)
-        )
-    end
-
-    dA_buf = node.buffers.dA
-    dx_buf = node.buffers.dx
-    temp_x_t = node.buffers.temp_x_t
-
-    transpose!(temp_x_t, x)
-    mul!(dA_buf, ∇, temp_x_t) #∇ * x'
-    mul!(dx_buf, A', ∇) #A' * ∇
-
-    return (dA_buf, dx_buf)
-end 
-
+backward(::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = ( ∇ * x', A' * ∇)
 
 import LinearAlgebra: diagm
 # x .* y (element-wise multiplication)
@@ -219,4 +197,19 @@ backward(::BroadcastedOperator{typeof(getindex_col)}, x::Matrix{Float32}, t::Int
         grad_x = zeros(eltype(∇), size(x))
         grad_x[:, t:t] .= ∇
         (grad_x, nothing)
+    end
+
+getindex_col_batch(x::GraphNode, t::GraphNode) = BroadcastedOperator(getindex_col_batch, x, t)
+forward(::BroadcastedOperator{typeof(getindex_col_batch)}, x::Array{Float32, 3}, t::Int64) =
+    dropdims((@view x[:, t:t, :]), dims=2)
+backward(::BroadcastedOperator{typeof(getindex_col_batch)},
+         x::Array{Float32,3},    # <-- note the “,3”
+         t::Int, 
+         ∇::Matrix{Float32}) =    # ∇ has shape (embed_dim, batch)
+    begin
+        # grad_x must have the same shape as x did in forward: (embed_dim, seq_len, batch)
+        grad_x = zeros(Float32, size(x))            # (embed_dim, seq_len, batch)
+        # Put ∇[:, b] into time‐step t for each batch index b:
+        grad_x[:, t, :] .= ∇                         # now (embed_dim, batch) fits into the 3rd dim
+        return (grad_x, nothing)                     # ∇ w.r.t. x is grad_x; no gradient for "t"
     end
