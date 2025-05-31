@@ -1,14 +1,3 @@
-const BATCH_SIZE = 1;
-
-# Updated Chain to handle RNN reset
-function reset!(model::Chain)
-    for layer in model.layers
-        if isa(layer, RNN)
-            reset!(layer)
-        end
-    end
-end
-
 mutable struct Embedding
     weights::Variable
     
@@ -29,10 +18,9 @@ function (l::Embedding)(indices::GraphNode)
     return op
 end
 
-# RNN Cell - implements the core RNN computation
 mutable struct RNNCell
-    W_ih::Variable  # Input to hidden weights
-    W_hh::Variable  # Hidden to hidden weights  
+    W_ih::Variable  
+    W_hh::Variable  
     bias::Union{Nothing, Variable}
     activation::Function
     
@@ -54,7 +42,6 @@ mutable struct RNNCell
 end
 
 function (cell::RNNCell)(input::GraphNode, hidden::GraphNode)
-    # RNN cell computation: h_t = tanh(W_ih * x_t + W_hh * h_{t-1} + b)
     ih = cell.W_ih * input
     hh = cell.W_hh * hidden
     
@@ -67,7 +54,6 @@ function (cell::RNNCell)(input::GraphNode, hidden::GraphNode)
     return cell.activation(combined)
 end
 
-# RNN Layer - processes sequences
 mutable struct RNN
     cell::RNNCell
     hidden_size::Int
@@ -137,51 +123,8 @@ function (rnn::RNN)(x::GraphNode, initial_hidden::Union{GraphNode, Nothing} = no
         return hidden
     end
 end
-
-# function (rnn::RNN)(x::GraphNode, initial_hidden::Union{GraphNode, Nothing} = nothing)
-#     input_dims = size(x.output)
-#     _, seq_length = input_dims
-    
-#     # Initialize hidden state
-#     if initial_hidden === nothing
-#         hidden = Variable(zeros(Float32, rnn.hidden_size, BATCH_SIZE), name="h0")
-#     else
-#         hidden = initial_hidden
-#     end
-    
-#     outputs = []
-    
-#     # Process sequence step by step
-#     for t in 1:seq_length
-#         # Extract the t-th column (timestep) from the embedded sequence
-#         # x_t = BroadcastedOperator(getindex_col, x, Constant(t))
-#         x_t = getindex_col(x, Constant(t))
-#         # Compute the output immediately for graph construction
-#         x_t.output = forward(x_t, x.output, t)
-
-        
-#         hidden = rnn.cell(x_t, hidden)
-        
-#         if rnn.return_sequences
-#             push!(outputs, hidden)
-#         end
-#     end
-    
-#     if rnn.return_sequences
-#         return outputs[end]  # For now, return last output
-#     else
-#         return hidden
-#     end
-# end
-
-# Reset function for RNN
-function reset!(rnn::RNN)
-    nothing
-end
-
-# FIXED IndexOperator - This is the key fix for your gradient issue
 mutable struct IndexOperator <: Operator
-    inputs::Tuple{GraphNode, GraphNode}  # (weights, indices)
+    inputs::Tuple{GraphNode, GraphNode}
     output :: Any
     ∇      :: Any
     name   :: String

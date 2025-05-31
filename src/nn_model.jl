@@ -52,6 +52,7 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
     total_acc  = 0.0f0
     iterations = 0
 
+
     for (x_batch, y_batch) in dataset
         # —– (1) Overwrite the entire .output fields so they match (in×batch)
         net.x_node.output = x_batch
@@ -64,44 +65,19 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
         # —– (3) Single backward (accumulates into each node’s .∇)
         backward!(net.sorted_graph)
 
-        # —– (4) Gather per-parameter gradients (with bias reduction + averaging)
+        # —– (4) Handle each parameter’s gradient, including bias‐reduction
         N = size(x_batch, 2)
-        grads = Vector{AbstractArray{Float32}}(undef, length(net.params))
+        for param in net.params
+            grad = param.∇
 
-        for (i, param) in enumerate(net.params)
-            raw_grad = param.∇
-
-            # If this is a bias (shape = out×1) but raw_grad is (out×batch),
-            # collapse over the batch dimension before averaging:
-            if size(param.output, 2) == 1 && size(raw_grad, 2) != 1
-                raw_grad = sum(raw_grad; dims=2)  # (out×1)
+            # If this param is a "bias" (shape = (out,1)) but grad is (out,batch),
+            # reduce over the batch dimension:
+            if size(param.output, 2) == 1 && size(grad, 2) != 1
+                grad = sum(grad; dims=2)    # now (out,1)
             end
 
-            # Now average over batch:
-            raw_grad .= raw_grad ./ float(N)
-
-            grads[i] = raw_grad
-        end
-
-        # —– (5) Compute global norm and clip if needed
-        #    ‖g‖_global = sqrt( sum_i,sum_j  grads[k][i,j]^2 )
-        total_sq = zero(Float32)
-        for g in grads
-            total_sq += sum(abs2, g)
-        end
-        global_norm = sqrt(total_sq)
-
-        if global_norm > GRAD_CLIP_THRESH
-            clip_coef = GRAD_CLIP_THRESH / global_norm
-            @inbounds for g in grads
-                g .*= clip_coef
-            end
-        end
-
-        # —– (6) Apply optimizer step and zero out param.∇
-        for (param, g) in zip(net.params, grads)
-            apply!(net.optimizer, param, g)
-            param.∇ .= 0.0f0
+            grad ./= float(N)               # average over minibatch
+            apply!(net.optimizer, param, grad)
         end
 
         total_loss += batch_loss
@@ -113,21 +89,6 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
     return (total_loss / iterations, total_acc / iterations)
 end
 
-function clip_gradients!(grads::Vector, max_norm::Float32)
-    for grad in grads
-        norm = sqrt(sum(grad .^ 2))
-        if norm > max_norm
-            grad .*= (max_norm / norm)
-        end
-    end
-end
-
-function clear!(grads::Vector)
-    for i in eachindex(grads)
-        grads[i] .= 0.0f0
-    end
-end
-
 function gradient!(grads, net, x_batch, y_batch, batch_size)
     batch_loss = 0.0f0
     batch_acc = 0.0f0
@@ -135,9 +96,6 @@ function gradient!(grads, net, x_batch, y_batch, batch_size)
     batch_size = size(x_batch, 2)
 
     for i in 1:batch_size
-        # TODO NOT NECESSARY ? Reset RNN states before processing each batch
-        reset!(net.model)
-
         x_sample = @view x_batch[:, i:i]
         y_sample = @view y_batch[:, i:i]
         
@@ -191,9 +149,6 @@ function test!(net, x_batch, y_batch, batch_size)
     batch_acc = 0.0f0
 
     batch_size = size(x_batch, 2)
-
-    # TODO NOT NECESSARY?
-    reset!(net.model)
 
     for i in 1:batch_size
         x_sample = x_batch[:, i:i]
