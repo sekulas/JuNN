@@ -1,10 +1,13 @@
 import Base: *
-import LinearAlgebra: mul!
+import LinearAlgebra: mul!, transpose!
+
+```
+BroadcastedOperators for basic operations
+```
 # x * y (aka matrix multiplication)
 *(A::GraphNode, x::GraphNode) = BroadcastedOperator(mul!, A, x)
 forward(::BroadcastedOperator{typeof(mul!)}, A, x) = A * x
-backward(::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = tuple(∇ * x', A' * ∇)
-
+backward(::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = ( ∇ * x', A' * ∇)
 
 import LinearAlgebra: diagm
 # x .* y (element-wise multiplication)
@@ -50,7 +53,7 @@ forward(::BroadcastedOperator{typeof(mean)}, x) =
     mean(x)
 backward(::BroadcastedOperator{typeof(mean)}, x, ∇) =
     let n = length(x)
-        δ = fill(∇ / n, n)
+        δ = fill(∇ / n, size(x))
     in
         tuple(δ)
     end
@@ -86,20 +89,6 @@ backward(::BroadcastedOperator{typeof(max)}, x, y, ∇) =
     #     in ( ∇ .* mx, ∇ .* .!mx )
 
 
-sigmoid(x::GraphNode) = BroadcastedOperator(σ, x)
-σ(x::GraphNode) = BroadcastedOperator(σ, x)
-forward(::BroadcastedOperator{typeof(σ)}, x) = 1.0f0 ./ (1.0f0 .+ exp.(-x))
-backward(node::BroadcastedOperator{typeof(σ)}, x, ∇) = 
-    # let
-    #     y = node.output
-    #     𝟏 = ones(length(y))
-    #     J = diagm(y .* (1.0 .- y))
-    #     tuple(J' * ∇)
-    # end
-    let 
-        y = node.output
-        tuple(∇ .* (y .* (1.0f0 .- y)))
-    end
 
 Base.Broadcast.broadcasted(^, x::GraphNode, y::GraphNode) = 
     BroadcastedOperator(^, x, y)
@@ -136,6 +125,14 @@ backward(::BroadcastedOperator{typeof(log)}, x, ∇) =
     ( ∇ ./ x, )
 
 
+```
+BroadcastedOperators for activation functions
+```
+Base.Broadcast.broadcasted(identity, x::GraphNode) = BroadcastedOperator(identity, x)
+forward(::BroadcastedOperator{typeof(identity)}, x) = x
+backward(::BroadcastedOperator{typeof(identity)}, x, ∇) = 
+    tuple(∇)
+
 softmax(x::GraphNode) = BroadcastedOperator(softmax, x)
 forward(::BroadcastedOperator{typeof(softmax)}, x) =
     let 
@@ -156,11 +153,21 @@ backward(node::BroadcastedOperator{typeof(softmax)}, x, ∇) =
         tuple(y .* (∇ .- ω))
     end
 
-Base.Broadcast.broadcasted(identity, x::GraphNode) = BroadcastedOperator(identity, x)
-forward(::BroadcastedOperator{typeof(identity)}, x) = x
-backward(::BroadcastedOperator{typeof(identity)}, x, ∇) = 
-    tuple(∇)
 
+sigmoid(x::GraphNode) = BroadcastedOperator(σ, x)
+σ(x::GraphNode) = BroadcastedOperator(σ, x)
+forward(::BroadcastedOperator{typeof(σ)}, x) = 1.0f0 ./ (1.0f0 .+ exp.(-x))
+backward(node::BroadcastedOperator{typeof(σ)}, x, ∇) = 
+    # let
+    #     y = node.output
+    #     𝟏 = ones(length(y))
+    #     J = diagm(y .* (1.0 .- y))
+    #     tuple(J' * ∇)
+    # end
+    let 
+        y = node.output
+        tuple(∇ .* (y .* (1.0f0 .- y)))
+    end
 
 import Base: tanh
 tanh(x::GraphNode) = BroadcastedOperator(tanh, x)
@@ -178,4 +185,31 @@ backward(node::BroadcastedOperator{typeof(ReLU)}, x, ∇) =
         y    = node.output
         mask = y .> 0.0f0
         tuple(mask .* ∇)            
+    end
+
+```
+BroadcastedOperators for column extraction 
+```
+getindex_col(x::GraphNode, t::GraphNode) = BroadcastedOperator(getindex_col, x, t)
+forward(::BroadcastedOperator{typeof(getindex_col)}, x::Array{Float32}, t::Int64) = @view x[:, t:t]
+backward(::BroadcastedOperator{typeof(getindex_col)}, x::Matrix{Float32}, t::Int64, ∇::Matrix{Float32}) = 
+    let
+        grad_x = zeros(eltype(∇), size(x))
+        grad_x[:, t:t] .= ∇
+        (grad_x, nothing)
+    end
+
+getindex_col_batch(x::GraphNode, t::GraphNode) = BroadcastedOperator(getindex_col_batch, x, t)
+forward(::BroadcastedOperator{typeof(getindex_col_batch)}, x::Array{Float32, 3}, t::Int64) =
+    dropdims((@view x[:, t:t, :]), dims=2)
+backward(::BroadcastedOperator{typeof(getindex_col_batch)},
+         x::Array{Float32,3},    # <-- note the “,3”
+         t::Int, 
+         ∇::Matrix{Float32}) =    # ∇ has shape (embed_dim, batch)
+    begin
+        # grad_x must have the same shape as x did in forward: (embed_dim, seq_len, batch)
+        grad_x = zeros(Float32, size(x))            # (embed_dim, seq_len, batch)
+        # Put ∇[:, b] into time‐step t for each batch index b:
+        grad_x[:, t, :] .= ∇                         # now (embed_dim, batch) fits into the 3rd dim
+        return (grad_x, nothing)                     # ∇ w.r.t. x is grad_x; no gradient for "t"
     end

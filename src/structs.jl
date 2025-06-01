@@ -25,6 +25,7 @@ mutable struct BroadcastedOperator{F} <: Operator
     inputs :: Any
     output :: Any
     ∇ :: Any
+    buffers :: Any
     name :: String
-    BroadcastedOperator(fun, inputs...; name="?") = new{typeof(fun)}(inputs, nothing, nothing, name)
+    BroadcastedOperator(fun, inputs...; name="?") = new{typeof(fun)}(inputs, nothing, nothing, nothing, name)
 end

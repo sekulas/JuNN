@@ -15,12 +15,26 @@ struct NeuralNetwork
     params::Vector{Variable}
 end
 
-function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::Function)
+function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::Function, batch_size::Int64; seq_length::Union{Int, Nothing}=nothing)
     input_size = size(model.layers[1].weights.output, 2)
     output_size = size(model.layers[end].weights.output, 1)
+
+    data_type = Float32
+    init_value = zeros
     
-    x_node = Variable(zeros(Float32, input_size, 1), name="x_input")
-    y_node = Variable(zeros(Float32, output_size, 1), name="y_true")
+    if model.layers[1] isa Embedding
+        if seq_length !== nothing
+            input_size = seq_length
+        else
+            println("Warning: seq_length is not provided, using input_size from the embedding layer.")
+            println("Solution may not work as expected if seq_length is not set.")
+        end
+        data_type = Int32
+        init_value = ones
+    end
+    
+    x_node = Variable(init_value(data_type, input_size, batch_size), name="x_input")
+    y_node = Variable(zeros(Float32, output_size, batch_size), name="y_true")
     
     y_pred_node = model(x_node)
     loss_node = loss(y_node, y_pred_node)
@@ -31,24 +45,46 @@ function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::F
     NeuralNetwork(model, optimizer, loss, accuracy, x_node, y_node, y_pred_node, sorted_graph, params)
 end
 
+const GRAD_CLIP_THRESH = 5.0f0
+
 function train!(net::NeuralNetwork, dataset::DataLoader)
-    batch_size = dataset.batchsize
     total_loss = 0.0f0
-    total_acc = 0.0f0
+    total_acc  = 0.0f0
     iterations = 0
-    grads = [zeros(Float32, size(p.output)) for p in net.params]
+
 
     for (x_batch, y_batch) in dataset
-        loss, acc = 
-            gradient!(grads, net, x_batch, y_batch, batch_size)
+        # —– (1) Overwrite the entire .output fields so they match (in×batch)
+        net.x_node.output = x_batch
+        net.y_node.output = y_batch
 
-        optimize!(net.optimizer, net.params, grads)
-        
-        total_loss += loss
-        total_acc += acc
+        # —– (2) Single forward on full batch
+        batch_loss = forward!(net.sorted_graph)
+        batch_acc  = net.accuracy(y_batch, net.y_pred_node.output)
 
+        # —– (3) Single backward (accumulates into each node’s .∇)
+        backward!(net.sorted_graph)
+
+        # —– (4) Handle each parameter’s gradient, including bias‐reduction
+        N = size(x_batch, 2)
+        for param in net.params
+            grad = param.∇
+
+            # If this param is a "bias" (shape = (out,1)) but grad is (out,batch),
+            # reduce over the batch dimension:
+            if size(param.output, 2) == 1 && size(grad, 2) != 1
+                grad = sum(grad; dims=2)    # now (out,1)
+            end
+
+            grad ./= float(N)               # average over minibatch
+            apply!(net.optimizer, param, grad)
+        end
+
+        total_loss += batch_loss
+        total_acc  += batch_acc
         iterations += 1
     end
+
 
     return (total_loss / iterations, total_acc / iterations)
 end
@@ -88,19 +124,20 @@ function accumulate_gradients!(grad_accumulator::Vector, params::Vector)
     end
 end
 
-function evaluate(net, testset::DataLoader)
-    batch_size = testset.batchsize
+function evaluate(net::NeuralNetwork, testset::DataLoader)
     total_loss = 0.0f0
-    total_acc = 0.0f0
+    total_acc  = 0.0f0
     iterations = 0
 
     for (x_batch, y_batch) in testset
-        loss, acc = 
-            test!(net, x_batch, y_batch, batch_size)
-        
-        total_loss += loss
-        total_acc += acc
+        net.x_node.output = x_batch
+        net.y_node.output = y_batch
 
+        batch_loss = forward!(net.sorted_graph)
+        batch_acc  = net.accuracy(y_batch, net.y_pred_node.output)
+
+        total_loss += batch_loss
+        total_acc  += batch_acc
         iterations += 1
     end
 

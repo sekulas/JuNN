@@ -24,15 +24,40 @@ end
 
 function get_params(model::Chain)
     params = []
+    i = 1
     for layer in model.layers
         if isa(layer, Dense)
+            println("Adding Dense layer parameters: ", i)
             push!(params, layer.weights)
             if !isnothing(layer.bias)
+                println("Adding Dense layer bias: ", i)
                 push!(params, layer.bias)
             end
+        elseif isa(layer, RNN)
+            println("Adding RNN layer parameters: ", i)
+            push!(params, layer.cell.W_ih)
+            push!(params, layer.cell.W_hh)
+            if !isnothing(layer.cell.bias)
+                println("Adding RNN layer bias: ", i)
+                push!(params, layer.cell.bias)
+            end
+        elseif isa(layer, Embedding)
+            println("Adding Embedding layer parameters: ", i)
+            push!(params, layer.weights)
         end
+        i += 1
     end
     return params
+end
+
+function clear_caches!(model::Chain)
+    """Clear all cached arrays to free memory"""
+    for layer in model.layers
+        if isa(layer, Dense)
+            # Clear caches in layer operations if they exist
+            # This would be called during forward/backward operations
+        end
+    end
 end
 
 # https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/layers/basic.jl#L179
@@ -88,8 +113,3 @@ glorot_uniform(dims...) = glorot_uniform(GLOBAL_RNG, dims...)
 
 # https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/gradient.jl#L3
 # https://github.com/FluxML/Zygote.jl/blob/1b914d994aea236bcb6d3d0cd6c099d86cede101/src/compiler/interface.jl#L152
-
-
-# Optimisers
-# https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/layers/basic.jl#L85
-# update! https://github.com/FluxML/Flux.jl/blob/0e36af98f6fc5b7f3c95fe819a02172cfaaaf777/src/optimise/train.jl
