@@ -39,69 +39,35 @@ end
 mutable struct RNN
     cell::RNNCell
     hidden_size::Int
-    return_sequences::Bool
     
     function RNN(input_size::Int, hidden_size::Int;
                 bias::Bool = true,
                 activation = ReLU,
-                return_sequences::Bool = false,
                 init = glorot_uniform,
                 name = nothing)
         
         cell = RNNCell(input_size, hidden_size; 
                       bias=bias, activation=activation, init=init, name=name)
-        new(cell, hidden_size, return_sequences)
+        new(cell, hidden_size)
     end
 end
 
-function (rnn::RNN)(x::GraphNode, initial_hidden::Union{GraphNode, Nothing} = nothing)
-    # x should be of shape (embed_dim, seq_length) after embedding
-    # Handle the case where x.output might be nothing during graph construction
-    if x.output === nothing
-        error("RNN input has not been computed. Make sure the embedding layer computes its output during construction.")
-    end
-    
+function (rnn::RNN)(x::GraphNode, initial_hidden::Union{GraphNode, Nothing} = nothing)   
     input_dims = size(x.output)
+    _, seq_length, batch_size = input_dims
     
-    if length(input_dims) == 2
-        input_size, seq_length = input_dims
-        batch_size = 1
-    else
-        input_size, seq_length, batch_size = input_dims
-    end
-    
-    # Initialize hidden state
     if initial_hidden === nothing
         hidden = Variable(zeros(Float32, rnn.hidden_size, batch_size), name="h0")
     else
         hidden = initial_hidden
     end
     
-    outputs = []
-    
-    # Process sequence step by step
     for t in 1:seq_length
-        if length(input_dims) == 2
-            # x_t = BroadcastedOperator(getindex_col, x, Constant(t))
-            x_t = getindex_col(x, Constant(t))
-            # Compute the output immediately for graph construction
-            x_t.output = forward(x_t, x.output, t)
-        else
-            x_t = getindex_col_batch(x, Constant(t))
-            # Compute the output immediately for graph construction
-            x_t.output = forward(x_t, x.output, t)
-        end
+        x_t = getindex_col_batch(x, Constant(t))
+        x_t.output = JuAD.forward(x_t, x.output, t)
         
         hidden = rnn.cell(x_t, hidden)
-        
-        if rnn.return_sequences
-            push!(outputs, hidden)
-        end
     end
     
-    if rnn.return_sequences
-        return outputs[end]  # For now, return last output
-    else
-        return hidden
-    end
+    return hidden
 end
