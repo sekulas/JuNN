@@ -48,7 +48,7 @@ batch_size = 128
 
 model = Chain(
     Embedding(vocab_size, embed_dim, name="embedding"),
-    RNN(embed_dim, 16, return_sequences=false, name="rnn_layer"),
+    RNN(embed_dim, 16, name="rnn_layer"),
     Dense((16 => 1), σ, name="output_layer")
 )
     
