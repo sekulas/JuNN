@@ -1,7 +1,5 @@
-using Random: GLOBAL_RNG, AbstractRNG
-include("structs.jl")
-include("broadcast_operators.jl")
-include("layers.jl")
+using JuAD
+include("../data_loader.jl")
 
 struct NeuralNetwork
     model::Chain
@@ -44,8 +42,6 @@ function NeuralNetwork(model::Chain, optimizer::Any, loss::Function, accuracy::F
     
     NeuralNetwork(model, optimizer, loss, accuracy, x_node, y_node, y_pred_node, sorted_graph, params)
 end
-
-const GRAD_CLIP_THRESH = 5.0f0
 
 function train!(net::NeuralNetwork, dataset::DataLoader)
     total_loss = 0.0f0

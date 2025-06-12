@@ -203,13 +203,11 @@ getindex_col_batch(x::GraphNode, t::GraphNode) = BroadcastedOperator(getindex_co
 forward(::BroadcastedOperator{typeof(getindex_col_batch)}, x::Array{Float32, 3}, t::Int64) =
     dropdims((@view x[:, t:t, :]), dims=2)
 backward(::BroadcastedOperator{typeof(getindex_col_batch)},
-         x::Array{Float32,3},    # <-- note the “,3”
+         x::Array{Float32,3},    
          t::Int, 
-         ∇::Matrix{Float32}) =    # ∇ has shape (embed_dim, batch)
+         ∇::Matrix{Float32}) =    # size - (embed_dim, batch)
     begin
-        # grad_x must have the same shape as x did in forward: (embed_dim, seq_len, batch)
         grad_x = zeros(Float32, size(x))            # (embed_dim, seq_len, batch)
-        # Put ∇[:, b] into time‐step t for each batch index b:
-        grad_x[:, t, :] .= ∇                         # now (embed_dim, batch) fits into the 3rd dim
-        return (grad_x, nothing)                     # ∇ w.r.t. x is grad_x; no gradient for "t"
+        grad_x[:, t, :] .= ∇                         # (embed_dim, batch)
+        return (grad_x, nothing)                     
     end
