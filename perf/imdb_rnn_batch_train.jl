@@ -42,8 +42,8 @@ println("embeddings: ", size(embeddings))
 println("vocab: ", size(vocab))
 
 vocab_size = length(vocab)
-embed_dim = size(embeddings, 1)  # 50 from your comment
-sequence_length = size(X_train, 1)  # 130 from your comment
+embed_dim = size(embeddings, 1)     # 50
+sequence_length = size(X_train, 1)  # 130
 batch_size = 128
 
 model = Chain(
