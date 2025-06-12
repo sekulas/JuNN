@@ -3,10 +3,6 @@ module JuNN
 using JuAD
 using Random: GLOBAL_RNG, AbstractRNG
 
-# Re-export commonly used AutoDiff components
-# export GraphNode, Variable, Constant
-# export forward!, backward!, topological_sort
-
 # Export layer types
 export Dense, Chain, RNN, RNNCell, Embedding
 
@@ -51,4 +47,4 @@ include("./utils/weights_gen.jl")
 include("./losses.jl")
 include("./data_loader.jl")
 
-end # module
+end

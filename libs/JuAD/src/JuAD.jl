@@ -11,14 +11,14 @@ export reset!, compute!, update!
 # Export utility functions
 export visit
 
+# Export operators
 export forward, backward
-export ReLU, sigmoid, σ, softmax, tanh  # add other activations you want exported
+export ReLU, sigmoid, σ, softmax, tanh
 export *
 export +, -, /, max, ^, exp, log, sum, mean
 export getindex_col_batch, getindex_col
 
 
-# Include all source files
 include("./structs.jl")
 include("./graph.jl")
 include("./forward.jl") 

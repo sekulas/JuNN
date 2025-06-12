@@ -9,7 +9,6 @@ BroadcastedOperators for basic operations
 forward(::BroadcastedOperator{typeof(mul!)}, A, x) = A * x
 backward(::BroadcastedOperator{typeof(mul!)}, A, x, ∇) = ( ∇ * x', A' * ∇)
 
-import LinearAlgebra: diagm
 # x .* y (element-wise multiplication)
 Base.Broadcast.broadcasted(*, x::GraphNode, y::GraphNode) = BroadcastedOperator(*, x, y)
 forward(::BroadcastedOperator{typeof(*)}, x, y) = x .* y

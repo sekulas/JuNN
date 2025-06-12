@@ -50,24 +50,19 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
 
 
     for (x_batch, y_batch) in dataset
-        # —– (1) Overwrite the entire .output fields so they match (in×batch)
         net.x_node.output = x_batch
         net.y_node.output = y_batch
 
-        # —– (2) Single forward on full batch
         batch_loss = forward!(net.sorted_graph)
         batch_acc  = net.accuracy(y_batch, net.y_pred_node.output)
 
-        # —– (3) Single backward (accumulates into each node’s .∇)
         backward!(net.sorted_graph)
 
-        # —– (4) Handle each parameter’s gradient, including bias‐reduction
         N = size(x_batch, 2)
         for param in net.params
             grad = param.∇
 
-            # If this param is a "bias" (shape = (out,1)) but grad is (out,batch),
-            # reduce over the batch dimension:
+
             if size(param.output, 2) == 1 && size(grad, 2) != 1
                 grad = sum(grad; dims=2)    # now (out,1)
             end
