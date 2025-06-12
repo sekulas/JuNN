@@ -60,19 +60,18 @@ backward(::BroadcastedOperator{typeof(mean)}, x, ∇) =
 
 
 
-# Potencjalnie do potegi ^-1 zamiast dzielenia w funkcji aktywacji.
 Base.Broadcast.broadcasted(/, x::GraphNode, y::GraphNode) =
     BroadcastedOperator(/, x, y)
 forward(::BroadcastedOperator{typeof(/)}, x, y) = x ./ y
 backward(node::BroadcastedOperator{typeof(/)}, x, y, ∇) = 
-    let
-        𝟏 = ones(length(node.output))
-        Jx = diagm(𝟏 ./ y)
-        Jy = (-x ./ y .^2)
-        tuple(Jx' * ∇, Jy' * ∇)
-    end
-    # ( ∇ ./ y,
-    #  -∇ .* x ./ (y .^ 2) )
+    # let
+    #     𝟏 = ones(length(node.output))
+    #     Jx = diagm(𝟏 ./ y)
+    #     Jy = (-x ./ y .^2)
+    #     tuple(Jx' * ∇, Jy' * ∇)
+    # end
+    ( ∇ ./ y,
+     -∇ .* x ./ (y .^ 2) )
 
 
 import Base: max
@@ -80,13 +79,15 @@ Base.Broadcast.broadcasted(max, x::GraphNode, y::GraphNode) =
     BroadcastedOperator(max, x, y)
 forward(::BroadcastedOperator{typeof(max)}, x, y) = max.(x, y)
 backward(::BroadcastedOperator{typeof(max)}, x, y, ∇) = 
-    let
-        Jx = diagm(isless.(y, x))
-        Jy = diagm(isless.(x, y))
-        tuple(Jx' * ∇, Jy' * ∇)
+    # let
+    #     Jx = diagm(isless.(y, x))
+    #     Jy = diagm(isless.(x, y))
+    #     tuple(Jx' * ∇, Jy' * ∇)
+    # end
+    let 
+        mx = x .> y
+        ( ∇ .* mx, ∇ .* .!mx )
     end
-    # let mx = x .> y      # or `>=` to break ties differently
-    #     in ( ∇ .* mx, ∇ .* .!mx )
 
 
 
@@ -95,26 +96,26 @@ Base.Broadcast.broadcasted(^, x::GraphNode, y::GraphNode) =
 forward(::BroadcastedOperator{typeof(^)}, x, y) = 
     x .^ y
 backward(node::BroadcastedOperator{typeof(^)}, x, y, ∇) = 
-    let
-        𝟏 = ones(length(node.output))
-        Jx = diagm(y .* x .^ (y .- 1.0f0))
-        Jy = diagm(log.(abs.(x)) .* x .^ y)
-        tuple(Jx' * ∇, Jy' * ∇)
-    end
-    # ( ∇ .* (y .* x .^ (y .- 1)),
-    #   ∇ .* (log.(abs.(x)) .* x .^ y) )
+    # let
+    #     𝟏 = ones(length(node.output))
+    #     Jx = diagm(y .* x .^ (y .- 1.0f0))
+    #     Jy = diagm(log.(abs.(x)) .* x .^ y)
+    #     tuple(Jx' * ∇, Jy' * ∇)
+    # end
+    ( ∇ .* (y .* x .^ (y .- 1)),
+      ∇ .* (log.(abs.(x)) .* x .^ y) )
 
 Base.Broadcast.broadcasted(exp, x::GraphNode) = 
     BroadcastedOperator(exp, x)
 forward(::BroadcastedOperator{typeof(exp)}, x) = 
     exp.(x)
 backward(node::BroadcastedOperator{typeof(exp)}, x, ∇) = 
-    let
-        y = node.output
-        J = diagm(y)
-        tuple(J' * ∇)
-    end
-    # ( ∇ .* node.output, )
+    # let
+    #     y = node.output
+    #     J = diagm(y)
+    #     tuple(J' * ∇)
+    # end
+    ( ∇ .* node.output, )
 
 Base.Broadcast.broadcasted(log, x::GraphNode) = 
     BroadcastedOperator(log, x)
@@ -205,9 +206,9 @@ forward(::BroadcastedOperator{typeof(getindex_col_batch)}, x::Array{Float32, 3},
 backward(::BroadcastedOperator{typeof(getindex_col_batch)},
          x::Array{Float32,3},    
          t::Int, 
-         ∇::Matrix{Float32}) =    # size - (embed_dim, batch)
+         ∇::Matrix{Float32}) =                      # size - (embed_dim, batch)
     begin
         grad_x = zeros(Float32, size(x))            # (embed_dim, seq_len, batch)
-        grad_x[:, t, :] .= ∇                         # (embed_dim, batch)
+        grad_x[:, t, :] .= ∇                        # (embed_dim, batch)
         return (grad_x, nothing)                     
     end
