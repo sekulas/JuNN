@@ -30,7 +30,8 @@ export
     sigmoid,
     softmax,
     tanh,
-    σ
+    σ,
+    mean
 
 
 include("./layers/activations.jl")
