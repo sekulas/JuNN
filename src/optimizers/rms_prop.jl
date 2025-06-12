@@ -1,7 +1,5 @@
 using JuAD
 
-include("base.jl")
-
 mutable struct RMSProp <: AbstractOptimiser
     η::Float32    # learning rate
     ρ::Float32    # decay rate

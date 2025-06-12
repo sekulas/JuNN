@@ -1,6 +1,4 @@
 using JuAD
-include("base.jl")
-
 mutable struct Adam <: AbstractOptimiser
     eta::Float32
     beta::Tuple{Float32,Float32}
