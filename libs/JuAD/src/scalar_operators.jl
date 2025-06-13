@@ -3,7 +3,7 @@ import Base:^
 forward(::ScalarOperator{typeof(^)}, x, n) = x^n
 backward(::ScalarOperator{typeof(^)}, x, n, ∇) = 
     let
-        ∇ * n * x^(n-1),
+        ∇ * n * x^(n-1.0f0),
         ∇ * log(abs(x)) * x^n
     end
 

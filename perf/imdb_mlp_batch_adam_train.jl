@@ -37,7 +37,7 @@ model = Chain(
     Dense((32 => 1), σ, name="output_layer")
 )
 
-accuracy(y_true, y_pred) = mean((y_true .> 0.5) .== (y_pred .> 0.5))
+accuracy(y_true, y_pred) = mean((y_true .> 0.5f0) .== (y_pred .> 0.5f0))
 
 net = NeuralNetwork(model, Adam(), binary_cross_entropy, accuracy, batch_size)
 

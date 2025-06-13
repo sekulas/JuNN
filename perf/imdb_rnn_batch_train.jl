@@ -56,7 +56,7 @@ model.layers[1].weights.output .= embeddings
 dataset = DataLoader((X_train, y_train), batchsize=batch_size, shuffle=true)
 testset = DataLoader((X_test, y_test), batchsize=batch_size, shuffle=false)
 
-accuracy(y_true, y_pred) = mean((y_true .> 0.5) .== (y_pred .> 0.5))
+accuracy(y_true, y_pred) = mean((y_true .> 0.5f0) .== (y_pred .> 0.5f0))
 
 net = NeuralNetwork(model, RMSProp(), binary_cross_entropy, accuracy, batch_size, seq_length=sequence_length)
 

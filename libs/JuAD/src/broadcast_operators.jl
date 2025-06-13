@@ -101,7 +101,7 @@ backward(node::BroadcastedOperator{typeof(^)}, x, y, ∇) =
     #     Jy = diagm(log.(abs.(x)) .* x .^ y)
     #     tuple(Jx' * ∇, Jy' * ∇)
     # end
-    ( ∇ .* (y .* x .^ (y .- 1)),
+    ( ∇ .* (y .* x .^ (y .- 1.0f0)),
       ∇ .* (log.(abs.(x)) .* x .^ y) )
 
 Base.Broadcast.broadcasted(exp, x::GraphNode) = 
@@ -175,7 +175,7 @@ forward(::BroadcastedOperator{typeof(tanh)}, x) = tanh.(x)
 backward(node::BroadcastedOperator{typeof(tanh)}, x, ∇) =
   let
     y = node.output
-    tuple((1.0f0 .- y .^ 2.0f0) .* ∇)
+    tuple((1.0f0 .- y .^ 2) .* ∇)
   end
 
 ReLU(x::GraphNode) = BroadcastedOperator(ReLU, x)
