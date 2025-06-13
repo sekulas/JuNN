@@ -59,17 +59,8 @@ function train!(net::NeuralNetwork, dataset::DataLoader)
         backward!(net.sorted_graph)
 
         N = size(x_batch, 2)
-        for param in net.params
-            grad = param.∇
 
-
-            if size(param.output, 2) == 1 && size(grad, 2) != 1
-                grad = sum(grad; dims=2)    # now (out,1)
-            end
-
-            grad ./= float(N)               # average over minibatch
-            apply!(net.optimizer, param, grad)
-        end
+        optimize!(net, N);
 
         total_loss += batch_loss
         total_acc  += batch_acc
