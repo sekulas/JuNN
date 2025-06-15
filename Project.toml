@@ -1,10 +1,11 @@
-name = "JuMLP"
+name = "JuNN"
 uuid = "47b9319d-380c-409f-8d4d-bb5613218179"
 authors = ["sekulas <sekula.sebastian22@gmail.com>"]
 version = "0.1.0"
 
 [deps]
-PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+JuAD = "0961c92b-40c5-4dfa-9d39-ab3d1717dc14"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
-PyPlot = "2.11.6"
+Random = "1.11.0"

@@ -1,19 +1,16 @@
-include("../src/structs.jl")
-include("../src/scalar_operators.jl")
-include("../src/broadcast_operators.jl")
-include("../src/graph.jl")
-include("../src/forward.jl")
-include("../src/backward.jl")
-include("../src/data_loader.jl")
-include("../src/nn_model.jl")
-include("../src/optimisers.jl")
-include("../src/losses.jl")
-include("../src/layers.jl")
+using JuNN
 
 using Printf, Random
 Random.seed!(0)
 
 using JLD2
+
+#### DEBUGGING VERSION ####
+#X_train = load("./data/imdb_dataset_prepared_bool_labels.jld2", "X_train")
+#y_train = load("./data/imdb_dataset_prepared_bool_labels.jld2", "y_train")
+#X_test = load("./data/imdb_dataset_prepared_bool_labels.jld2", "X_test")
+#y_test = load("./data/imdb_dataset_prepared_bool_labels.jld2", "y_test")
+
 X_train = load("./data/imdb_dataset_prepared.jld2", "X_train")
 y_train = load("./data/imdb_dataset_prepared.jld2", "y_train")
 X_test = load("./data/imdb_dataset_prepared.jld2", "X_test")
@@ -28,8 +25,7 @@ y_train = Float32.(y_train)
 X_test = Float32.(X_test)
 y_test = Float32.(y_test)
 
-
-batch_size = 32
+batch_size = 64
 
 dataset = DataLoader((X_train, y_train), batchsize=batch_size, shuffle=true)
 testset = DataLoader((X_test, y_test), batchsize=batch_size, shuffle=false)
@@ -41,13 +37,11 @@ model = Chain(
     Dense((32 => 1), σ, name="output_layer")
 )
 
-function compute_accuracy(actual, pred)
-    (actual[1] > 0.5f0) == (pred[1] > 0.5f0) ? 1.0f0 : 0.0f0
-end
+accuracy(y_true, y_pred) = mean((y_true .> 0.5f0) .== (y_pred .> 0.5f0))
 
-net = NeuralNetwork(model, Adam(), binary_cross_entropy, compute_accuracy)
+net = NeuralNetwork(model, Adam(), binary_cross_entropy, accuracy, batch_size)
 
-epochs = 60
+epochs = 5
 for epoch in 1:epochs
     t = @elapsed begin
         train_loss, train_acc = train!(net, dataset)
@@ -57,5 +51,3 @@ for epoch in 1:epochs
     @printf("Epoch %d/%d: Train Loss: %.4f, Train Acc: %.4f, Test Loss: %.4f, Test Acc: %.4f, Time: %.2fs\n",
             epoch, epochs, train_loss, train_acc, test_loss, test_acc, t)
 end
-
-

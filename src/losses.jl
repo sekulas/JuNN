@@ -1,3 +1,5 @@
+using JuAD
+
 function mse_loss(y::GraphNode, ŷ::GraphNode)
     diff = ŷ .- y
     squared = diff .^ Constant(2)

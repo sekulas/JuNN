@@ -1,0 +1,12 @@
+name = "JuAD"
+uuid = "0961c92b-40c5-4dfa-9d39-ab3d1717dc14"
+authors = ["sekulas <sekula.sebastian22@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+LinearAlgebra = "1.11.0"
+Statistics = "1.11.1"
