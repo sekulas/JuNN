@@ -17,9 +17,7 @@ function apply!(opt::RMSProp, param::Variable, grad::Array{Float32})
         opt.state[param] = zeros(Float32, size(param.output))
     end
     
-    # Update moving average of squared gradients
     opt.state[param] .= opt.ρ .* opt.state[param] .+ (1.0f0 - opt.ρ) .* grad.^2
     
-    # Update parameters
     param.output .-= opt.η .* grad ./ (sqrt.(opt.state[param]) .+ opt.ϵ)
 end
