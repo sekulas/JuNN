@@ -30,7 +30,6 @@ export
     mean
 
 
-include("./layers/activations.jl")
 include("./layers/dense.jl")
 include("./layers/recurrent.jl")
 include("./layers/embedding.jl")
